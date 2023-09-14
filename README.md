@@ -1,3 +1,10 @@
+Differences in this fork:
+Adds partial support for CoreML MIL (model intermediate language) and espresso.
+
+Espresso is partially based on [this converter](https://github.com/AsuharietYgvar/TNN/blob/1a637d88cc5e388f6fb31291e7df0d563238e785/tools/onnx2tnn/onnx-coreml/coreml2onnx.py). MIL is based on the official docs, but only a small fraction (notably information about const and weights are lacking).
+
+---
+
 <div align="center">
 <img width="400px" height="100px" src="https://github.com/lutzroeder/netron/raw/main/.github/logo-light.svg#gh-light-mode-only">
 <img width="400px" height="100px" src="https://github.com/lutzroeder/netron/raw/main/.github/logo-dark.svg#gh-dark-mode-only">
