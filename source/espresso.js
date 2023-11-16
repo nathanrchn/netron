@@ -120,12 +120,17 @@ espresso.Graph = class {
         for (const name in shapes) {
             if (Object.hasOwnProperty.call(shapes, name)) {
                 const shape = shapes[name];
+                const rank = parseInt(shape["_rank"]);
                 const dims = [];
-                for (const dim of ['n', 'k', 'h', 'w']) {
-                    if (shape[dim] !== undefined) {
+                // Dims for rank < 4 are populated in reverse order (I think).
+                const dimNames = ['n', 'k', 'h', 'w'];
+                dimNames.reverse();
+                for (const dim of dimNames) {
+                    if (shape[dim] !== undefined && dims.length < rank) {
                         dims.push(shape[dim]);
                     }
                 }
+                dims.reverse();
                 shapesByName.set(name, dims);
             }
         }
