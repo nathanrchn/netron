@@ -1,30 +1,41 @@
 
-var mxnet = {};
-var json = require('./json');
-var base = require('./base');
+import * as json from './json.js';
+
+const mxnet = {};
 
 mxnet.ModelFactory = class {
 
     match(context) {
         const identifier = context.identifier;
         const extension = identifier.split('.').pop().toLowerCase();
-        if (extension === 'json') {
-            const obj = context.open('json');
-            if (obj && obj.nodes && obj.arg_nodes && obj.heads) {
-                return 'mxnet.json';
+        switch (extension) {
+            case 'json': {
+                const obj = context.peek('json');
+                if (obj && obj.nodes && obj.arg_nodes && obj.heads) {
+                    context.type = 'mxnet.json';
+                    context.target = obj;
+                }
+                break;
+            }
+            case 'params': {
+                const stream = context.stream;
+                const signature = [0x12, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+                if (stream && stream.length > signature.length && stream.peek(signature.length).every((value, index) => value === signature[index])) {
+                    context.type = 'mxnet.params';
+                }
+                break;
+            }
+            default: {
+                break;
             }
         }
-        if (extension === 'params') {
-            const stream = context.stream;
-            const signature = [ 0x12, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ];
-            if (stream && stream.length > signature.length && stream.peek(signature.length).every((value, index) => value == signature[index])) {
-                return 'mxnet.params';
-            }
-        }
-        return undefined;
     }
 
-    async open(context, target) {
+    filter(context, type) {
+        return context.type !== 'mxnet.json' || type !== 'mxnet.params';
+    }
+
+    async open(context) {
         const metadata = await context.metadata('mxnet-metadata.json');
         const basename = (base, identifier, extension, suffix, append) => {
             if (!base) {
@@ -46,7 +57,7 @@ mxnet.ModelFactory = class {
                     const major = Math.floor(value[1] / 10000) % 100;
                     const minor = Math.floor(value[1] / 100) % 100;
                     const patch = Math.floor(value[1]) % 100;
-                    return [ major.toString(), minor.toString(), patch.toString() ].join('.');
+                    return [major.toString(), minor.toString(), patch.toString()].join('.');
                 }
             }
             return null;
@@ -61,11 +72,11 @@ mxnet.ModelFactory = class {
                         if (obj.Model) {
                             const modelFormat = obj.Model['Model-Format'];
                             if (modelFormat && modelFormat !== 'MXNet-Symbolic') {
-                                throw new mxnet.Error('Model format \'' + modelFormat + '\' not supported.');
+                                throw new mxnet.Error(`Model format '${modelFormat}' not supported.`);
                             }
                             manifest.format = 'MXNet Model Server';
                             if (obj['Model-Archive-Version']) {
-                                manifest.format += ' v' + obj['Model-Archive-Version'].toString();
+                                manifest.format += ` v${obj['Model-Archive-Version']}`;
                             }
                             if (!obj.Model.Symbol) {
                                 throw new mxnet.Error('Manifest does not contain symbol entry.');
@@ -86,10 +97,10 @@ mxnet.ModelFactory = class {
                         } else if (obj.model) {
                             manifest.format = 'MXNet Model Archive';
                             if (obj.specificationVersion) {
-                                manifest.format += ' v' + obj.specificationVersion.toString();
+                                manifest.format += ` v${obj.specificationVersion}`;
                             }
                             if (obj.model.modelName) {
-                                manifest.symbol = obj.model.modelName + '-symbol.json';
+                                manifest.symbol = `${obj.model.modelName}-symbol.json`;
                             }
                             if (obj.model.modelName) {
                                 manifest.name = obj.model.modelName;
@@ -97,7 +108,7 @@ mxnet.ModelFactory = class {
                             if (manifest.model && obj.model.modelVersion) {
                                 manifest.version = obj.model.modelVersion;
                             }
-                            if (manifest.model && manifest.model.modelName && manifest.name != obj.model.description) {
+                            if (manifest.model && manifest.model.modelName && manifest.name !== obj.model.description) {
                                 manifest.description = obj.model.description;
                             }
                         } else {
@@ -105,7 +116,7 @@ mxnet.ModelFactory = class {
                         }
                         if (obj.Engine && obj.Engine.MXNet) {
                             const version = convertVersion(obj.Engine.MXNet);
-                            manifest.runtime = 'MXNet v' + (version ? version : obj.Engine.MXNet.toString());
+                            manifest.runtime = `MXNet v${version ? version : obj.Engine.MXNet}`;
                         }
                         if (obj.License) {
                             manifest.license = obj.License;
@@ -114,13 +125,13 @@ mxnet.ModelFactory = class {
                             manifest.runtime = obj.runtime;
                         }
                         if (obj.engine && obj.engine.engineName) {
-                            const engine = obj.engine.engineVersion ? obj.engine.engineName + ' ' + obj.engine.engineVersion : obj.engine.engineName;
-                            manifest.runtime = manifest.runtime ? (manifest.runtime + ' (' + engine + ')') : engine;
+                            const engine = obj.engine.engineVersion ? `${obj.engine.engineName} ${obj.engine.engineVersion}` : obj.engine.engineName;
+                            manifest.runtime = manifest.runtime ? (`${manifest.runtime} (${engine})`) : engine;
                         }
                         if (obj.publisher && obj.publisher.author) {
                             manifest.author = obj.publisher.author;
                             if (obj.publisher.email) {
-                                manifest.author = manifest.author + ' <' + obj.publisher.email + '>';
+                                manifest.author = `${manifest.author} <${obj.publisher.email}>`;
                             }
                         }
                         if (obj.license) {
@@ -128,28 +139,27 @@ mxnet.ModelFactory = class {
                         }
                         if (obj.Model && obj.Model.Signature) {
                             try {
-                                const stream = await context.request(obj.Model.Signature);
-                                const reader = json.TextReader.open(stream);
-                                manifest.signature = reader.read();
+                                const content = await context.fetch(obj.Model.Signature);
+                                manifest.signature = content.read('json');
                                 return manifest;
-                            } catch (error) {
+                            } catch {
                                 return manifest;
                             }
                         }
                     }
                     return manifest;
                 } catch (err) {
-                    throw new mxnet.Error('Failed to read manifest. ' + err.message);
+                    throw new mxnet.Error(`Failed to read manifest. ${err.message}`);
                 }
             };
             try {
-                const stream = await context.request('MANIFEST.json');
-                return parse(stream);
-            } catch (error) {
+                const content = await context.fetch('MANIFEST.json');
+                return parse(content.stream);
+            } catch {
                 try {
-                    const stream = await context.request('MAR-INF/MANIFEST.json');
-                    return parse(stream);
-                } catch (error) {
+                    const content = await context.fetch('MAR-INF/MANIFEST.json');
+                    return parse(content.stream);
+                } catch {
                     return parse(null);
                 }
             }
@@ -158,45 +168,43 @@ mxnet.ModelFactory = class {
             const parameters = new Map();
             if (params) {
                 try {
-                    for (const entry of mxnet.ndarray.load(params)) {
-                        const key = entry[0];
-                        const array = entry[1];
+                    for (const [key, array] of mxnet.ndarray.load(params)) {
                         const name = (key.startsWith('arg:') || key.startsWith('aux:')) ? key.substring(4) : key;
                         parameters.set(name, array);
                     }
-                } catch (error) {
+                } catch {
                     // continue regardless of error
                 }
             }
             if (symbol) {
                 if (!manifest.format) {
                     const version = convertVersion(symbol.attrs && symbol.attrs.mxnet_version ? symbol.attrs.mxnet_version : null);
-                    manifest.format = 'MXNet' + (version ? ' v' + version : '');
+                    manifest.format = `MXNet${version ? ` v${version}` : ''}`;
                 }
-                if (symbol.nodes && symbol.nodes.some((node) => node && node.op == 'tvm_op')) {
+                if (symbol.nodes && symbol.nodes.some((node) => node && node.op === 'tvm_op')) {
                     manifest.producer  = 'TVM';
                 }
             }
             return new mxnet.Model(metadata, manifest, symbol, parameters);
         };
         const identifier = context.identifier;
-        switch (target) {
+        switch (context.type) {
             case 'mxnet.json': {
                 let symbol = null;
                 try {
-                    symbol = context.open('json');
+                    symbol = context.target;
                 } catch (error) {
                     const message = error && error.message ? error.message : error.toString();
-                    throw new mxnet.Error("Failed to load symbol entry (" + message.replace(/\.$/, '') + ').');
+                    throw new mxnet.Error(`Failed to load symbol entry (${message.replace(/\.$/, '')}).`);
                 }
                 const requestParams = async (manifest) => {
                     const file = basename(manifest.params, identifier, '.json', 'symbol', '-0000.params');
                     if (file) {
                         try {
-                            const stream = await context.request(file, null);
-                            const buffer = stream.peek();
-                            return createModel(metadata, manifest, symbol, buffer);
-                        } catch (error) {
+                            const content = await context.fetch(file);
+                            const reader = content.read('binary');
+                            return createModel(metadata, manifest, symbol, reader);
+                        } catch {
                             return createModel(metadata, manifest, symbol, null);
                         }
                     }
@@ -206,15 +214,15 @@ mxnet.ModelFactory = class {
                 return requestParams(manifest);
             }
             case 'mxnet.params': {
-                const params = context.stream.peek();
+                const params = context.read('binary');
                 const requestSymbol = async (manifest) => {
-                    const file = basename(manifest.symbol, identifier, '.params', null, '-symbol.json');
-                    if (file) {
+                    const name = basename(manifest.symbol, identifier, '.params', null, '-symbol.json');
+                    if (name) {
                         try {
-                            const text = await context.request(file, 'utf-8');
-                            const symbol = JSON.parse(text);
+                            const content = await context.fetch(name);
+                            const symbol = content.read('json');
                             return createModel(metadata, manifest, symbol, params);
-                        } catch (error) {
+                        } catch {
                             return createModel(metadata, manifest, null, params);
                         }
                     }
@@ -224,7 +232,7 @@ mxnet.ModelFactory = class {
                 return requestSymbol(manifest);
             }
             default: {
-                throw new mxnet.Error("Unsupported MXNet format '" + target + "'.");
+                throw new mxnet.Error(`Unsupported MXNet format '${context.type}'.`);
             }
         }
     }
@@ -255,12 +263,12 @@ mxnet.Model = class {
         this._runtime = manifest.runtime || '';
         this._metadata = [];
         if (manifest.author) {
-            this._metadata.push({ name: 'author', value: manifest.author });
+            this._metadata.push(new mxnet.Argument('author', manifest.author));
         }
         if (manifest.license) {
-            this._metadata.push({ name: 'license', value: manifest.license });
+            this._metadata.push(new mxnet.Argument('license', manifest.license));
         }
-        this._graphs = [ new mxnet.Graph(metadata, manifest, symbol, params) ];
+        this._graphs = [new mxnet.Graph(metadata, manifest, symbol, params)];
     }
 
     get format() {
@@ -305,31 +313,31 @@ mxnet.Graph = class {
         this._outputs = [];
         const tensors = new Map();
         if (params) {
-            for (const pair of params) {
-                const key = pair[0];
-                const value = pair[1];
-                tensors.set(key, new mxnet.Tensor(key, new mxnet.TensorType(value.dtype, new mxnet.TensorShape(value.shape)), value.data));
+            for (const [name, value] of params) {
+                const shape = new mxnet.TensorShape(value.shape);
+                const type = new mxnet.TensorType(value.dtype, shape);
+                const tensor = new mxnet.Tensor(name, type, value.data);
+                tensors.set(name, tensor);
             }
         }
         const values = new Map();
-        const value = (name, type, tensor) => {
+        values.map = (name, type, tensor) => {
             if (!values.has(name)) {
                 values.set(name, new mxnet.Value(name, type || null, tensor || null));
             } else if (type || (tensor && tensor !== values.get(name).initializer)) {
-                throw new mxnet.Error("Duplicate value '" + name + "'.");
+                throw new mxnet.Error(`Duplicate value '${name}'.`);
             }
             return values.get(name);
         };
         const updateOutput = (nodes, input) => {
-            const nodeIndex = input[0];
+            const [nodeIndex, outputIndex] = input;
             const node = nodes[nodeIndex];
-            const outputIndex = input[1];
             if (node) {
                 while (outputIndex >= node.outputs.length) {
-                    node.outputs.push([ nodeIndex, node.outputs.length ]);
+                    node.outputs.push([nodeIndex, node.outputs.length]);
                 }
             }
-            return [ nodeIndex, outputIndex ];
+            return [nodeIndex, outputIndex];
         };
         if (symbol) {
             let nodes = symbol.nodes;
@@ -358,23 +366,25 @@ mxnet.Graph = class {
                     outputCountMap[output] = (outputCountMap[output] || 0) + 1;
                 }
             }
-            const arg_nodes = new Map(symbol.arg_nodes.map((index) => [ index, index < nodes.length ? nodes[index] : null ]));
+            const arg_nodes = new Map(symbol.arg_nodes.map((index) => [index, index < nodes.length ? nodes[index] : null]));
             for (let i = 0; i < symbol.heads.length; i++) {
                 const head = symbol.heads[i];
                 const identifier = updateOutput(nodes, head);
-                const name = nodes[identifier[0]] ? nodes[identifier[0]].name : ('output' + ((i == 0) ? '' : (i + 1).toString()));
+                const name = nodes[identifier[0]] ? nodes[identifier[0]].name : (`output${(i === 0) ? '' : (i + 1)}`);
                 const signature = outputs[name];
                 const type = signature && signature.data_shape ? new mxnet.TensorType(-1, new mxnet.TensorShape(signature.data_shape)) : null;
-                this._outputs.push(new mxnet.Argument(name, [ value('[' + identifier.join(',') + ']', type) ]));
+                const value = values.map(`[${identifier.join(',')}]`, type);
+                const argument = new mxnet.Argument(name, [value]);
+                this._outputs.push(argument);
             }
             nodes = nodes.filter((node, index) => !arg_nodes.has(index));
             const initializers = new Map();
             for (const node of nodes) {
-                if (node.op == 'RNN') {
+                if (node.op === 'RNN') {
                     node.inputs = node.inputs.filter((input) => {
-                        const index = input[0];
+                        const [index] = input;
                         const arg_node = arg_nodes.get(index);
-                        if (arg_node && arg_node.op == 'null' && arg_node.name && arg_node.name.endsWith('_parameters') && arg_node.attr && arg_node.attr.__init__) {
+                        if (arg_node && arg_node.op === 'null' && arg_node.name && arg_node.name.endsWith('_parameters') && arg_node.attr && arg_node.attr.__init__) {
                             let attr = node.attrs || node.attr || node.param;
                             if (!attr) {
                                 node.attr = {};
@@ -388,24 +398,24 @@ mxnet.Graph = class {
                     });
                 }
                 for (const input of node.inputs) {
-                    const identifier = '[' + input.join(',') + ']';
+                    const identifier = `[${input.join(',')}]`;
                     if (!initializers.has(identifier)) {
-                        const index = input[0];
+                        const [index] = input;
                         const arg_node = arg_nodes.get(index);
-                        if (arg_node && arg_node.name && (!arg_node.inputs || arg_node.inputs.length == 0) && (arg_node.outputs && arg_node.outputs.length == 1)) {
+                        if (arg_node && arg_node.name && (!arg_node.inputs || arg_node.inputs.length === 0) && (arg_node.outputs && arg_node.outputs.length === 1)) {
                             if (tensors.has(arg_node.name)) {
                                 initializers.set(identifier, tensors.get(arg_node.name));
                                 arg_nodes.delete(index);
                             } else {
                                 const prefix = node.name.endsWith('_fwd') ? node.name.slice(0, -3) : node.name;
-                                if (arg_node.name && (arg_node.name.startsWith(prefix + '_') || arg_node.name.startsWith(prefix + '.'))) {
+                                if (arg_node.name && (arg_node.name.startsWith(`${prefix}_`) || arg_node.name.startsWith(`${prefix}.`))) {
                                     let dataType = -1;
                                     let shape = [];
                                     if (arg_node.attrs && arg_node.attrs.__dtype__ && arg_node.attrs.__shape__) {
                                         try {
-                                            dataType = parseInt(arg_node.attrs.__dtype__);
-                                            shape = JSON.parse('[' + arg_node.attrs.__shape__.replace('(', '').replace(')', '').split(' ').join('').split(',').map((dimension => dimension || '"?"')).join(',') + ']');
-                                        } catch (err) {
+                                            dataType = parseInt(arg_node.attrs.__dtype__, 10);
+                                            shape = JSON.parse(`[${arg_node.attrs.__shape__.replace('(', '').replace(')', '').split(' ').join('').split(',').map(((dimension) => dimension || '"?"')).join(',')}]`);
+                                        } catch {
                                             // continue regardless of error
                                         }
                                     }
@@ -421,51 +431,50 @@ mxnet.Graph = class {
                 }
                 if (node.params) {
                     for (const param of node.params) {
-                        value(param.id, null, tensors.get(param.id));
+                        values.map(param.id, null, tensors.get(param.id));
                     }
                 }
             }
-            for (const entry of arg_nodes) {
-                const arg_node = entry[1];
-                if (arg_node && (!arg_node.inputs || arg_node.inputs.length == 0) && (arg_node.outputs && arg_node.outputs.length == 1)) {
-                    const identifier = '[' + arg_node.outputs[0].join(',') + ']';
+            for (const [, arg_node] of arg_nodes) {
+                if (arg_node && (!arg_node.inputs || arg_node.inputs.length === 0) && (arg_node.outputs && arg_node.outputs.length === 1)) {
+                    const identifier = `[${arg_node.outputs[0].join(',')}]`;
                     const name = arg_node.name;
                     const signature = inputs[name];
                     const type = signature && signature.data_shape ? new mxnet.TensorType(-1, new mxnet.TensorShape(signature.data_shape)) : null;
-                    const argument = new mxnet.Argument(name, [ value(identifier, type, tensors.get(identifier)) ]);
+                    const value = values.map(identifier, type, tensors.get(identifier));
+                    const argument = new mxnet.Argument(name, [value]);
                     this._inputs.push(argument);
                 }
             }
             for (const node of nodes) {
-                this._nodes.push(new mxnet.Node(this._metadata, node, initializers, value));
+                this._nodes.push(new mxnet.Node(this._metadata, node, initializers, values));
             }
         } else if (params) {
             const blocks = new Map();
-            let separator = Array.from(params.keys()).every((key) => key.indexOf('_') != -1) ? '_' : '';
-            if (separator.length == 0) {
-                separator = Array.from(params.keys()).every((key) => key.indexOf('.') != -1) ? '.' : '';
+            let separator = Array.from(params.keys()).every((key) => key.indexOf('_') !== -1) ? '_' : '';
+            if (separator.length === 0) {
+                separator = Array.from(params.keys()).every((key) => key.indexOf('.') !== -1) ? '.' : '';
             }
             if (separator.length > 0) {
-                for (const param of params) {
-                    const key = param[0];
+                for (const [key] of params) {
                     const parts = key.split(separator);
                     let argumentName = parts.pop();
                     if (key.endsWith('moving_mean') || key.endsWith('moving_var')) {
-                        argumentName = [ parts.pop(), argumentName ].join(separator);
+                        argumentName = [parts.pop(), argumentName].join(separator);
                     }
                     const nodeName = parts.join(separator);
                     if (!blocks.has(nodeName)) {
                         blocks.set(nodeName, { name: nodeName, op: 'Weights', params: [] });
                     }
                     blocks.get(nodeName).params.push({ name: argumentName, id: key });
-                    value(key, null, tensors.get(key));
+                    values.map(key, null, tensors.get(key));
                 }
             } else {
                 throw new mxnet.Error("Unsupported key format in params.");
             }
 
             for (const block of blocks.values()) {
-                this._nodes.push(new mxnet.Node(metadata, block, new Map(), value));
+                this._nodes.push(new mxnet.Node(metadata, block, new Map(), values));
             }
         }
     }
@@ -507,7 +516,7 @@ mxnet.Value = class {
 
     constructor(name, type, initializer) {
         if (typeof name !== 'string') {
-            throw new mxnet.Error("Invalid value identifier '" + JSON.stringify(name) + "'.");
+            throw new mxnet.Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
         }
         this._name = name;
         this._type = type || null;
@@ -535,7 +544,7 @@ mxnet.Value = class {
 
 mxnet.Node = class {
 
-    constructor(metadata, node, initializers, value) {
+    constructor(metadata, node, initializers, values) {
         let type = node.op;
         this._name = node.name;
         this._attributes = [];
@@ -543,12 +552,12 @@ mxnet.Node = class {
         this._outputs = [];
         const attrs = node.attrs || node.attr || node.param;
         if (attrs) {
-            if (type == 'tvm_op' && attrs.func_name) {
+            if (type === 'tvm_op' && attrs.func_name) {
                 type = attrs.func_name;
             }
-            for (const entry of Object.entries(attrs)) {
-                if (type != 'tvm_op' && entry[0] != 'func_name') {
-                    const attribute = new mxnet.Attribute(metadata, type, entry[0], entry[1]);
+            for (const [name, value] of Object.entries(attrs)) {
+                if (type !== 'tvm_op' && name !== 'func_name') {
+                    const attribute = new mxnet.Attribute(metadata, type, name, value);
                     this._attributes.push(attribute);
                 }
             }
@@ -559,16 +568,17 @@ mxnet.Node = class {
             let inputIndex = 0;
             if (this._type && this._type.inputs) {
                 for (const inputDef of this._type.inputs) {
-                    if (inputIndex < inputs.length || inputDef.option != 'optional') {
-                        const count = (inputDef.option == 'variadic') ? (inputs.length - inputIndex) : 1;
-                        const values = [];
+                    if (inputIndex < inputs.length || inputDef.option !== 'optional') {
+                        const count = (inputDef.option === 'variadic') ? (inputs.length - inputIndex) : 1;
+                        const list = [];
                         for (const input of inputs.slice(inputIndex, inputIndex + count)) {
-                            const identifier = '[' + input.join(',') + ']';
-                            if (identifier !== '' || inputDef.option != 'optional') {
-                                values.push(value(identifier, inputDef.type, initializers.get(identifier)));
+                            const identifier = `[${input.join(',')}]`;
+                            if (identifier !== '' || inputDef.option !== 'optional') {
+                                const value = values.map(identifier, inputDef.type, initializers.get(identifier));
+                                list.push(value);
                             }
                         }
-                        const argument = new mxnet.Argument(inputDef.name, values);
+                        const argument = new mxnet.Argument(inputDef.name, list);
                         this._inputs.push(argument);
                         inputIndex += count;
                     }
@@ -576,10 +586,10 @@ mxnet.Node = class {
             }
             if (inputIndex < inputs.length) {
                 this._inputs.push(...inputs.slice(inputIndex).map((input, index) => {
-                    const identifier = '[' + input.join(',') + ']';
-                    return new mxnet.Argument((inputIndex + index).toString(), [
-                        value(identifier, null, initializers.get(identifier))
-                    ]);
+                    const name = (inputIndex + index).toString();
+                    const identifier = `[${input.join(',')}]`;
+                    const value = values.map(identifier, null, initializers.get(identifier));
+                    return new mxnet.Argument(name, [value]);
                 }));
             }
         }
@@ -588,13 +598,14 @@ mxnet.Node = class {
             let outputIndex = 0;
             if (this._type && this._type.outputs) {
                 for (const outputDef of this._type.outputs) {
-                    if (outputIndex < outputs.length || outputDef.option != 'optional') {
-                        const values = [];
-                        const count = (outputDef.option == 'variadic') ? (outputs.length - outputIndex) : 1;
+                    if (outputIndex < outputs.length || outputDef.option !== 'optional') {
+                        const list = [];
+                        const count = (outputDef.option === 'variadic') ? (outputs.length - outputIndex) : 1;
                         for (const output of outputs.slice(outputIndex, outputIndex + count)) {
-                            values.push(value('[' + output.join(',') + ']'));
+                            const value = values.map(`[${output.join(',')}]`);
+                            list.push(value);
                         }
-                        const argument = new mxnet.Argument(outputDef.name, values);
+                        const argument = new mxnet.Argument(outputDef.name, list);
                         this._outputs.push(argument);
                         outputIndex += count;
                     }
@@ -603,13 +614,15 @@ mxnet.Node = class {
             if (outputIndex < outputs.length) {
                 this._outputs.push(...outputs.slice(outputIndex).map((output, index) => {
                     const name = (outputIndex + index).toString();
-                    return new mxnet.Argument(name, [ value('[' + output.join(',') + ']') ]);
+                    const value = values.map(`[${output.join(',')}]`);
+                    return new mxnet.Argument(name, [value]);
                 }));
             }
         }
         if (node.params) {
             for (const param of node.params) {
-                const argument = new mxnet.Argument(param.name, [ value(param.id) ]);
+                const value = values.map(param.id);
+                const argument = new mxnet.Argument(param.name, [value]);
                 this._inputs.push(argument);
             }
         }
@@ -641,8 +654,6 @@ mxnet.Attribute = class {
     constructor(metadata, type, name, value) {
         this._name = name;
         this._value = value;
-
-        let number;
         metadata = metadata.attribute(type, name);
         if (metadata && metadata.type) {
             switch (metadata.type) {
@@ -659,18 +670,20 @@ mxnet.Attribute = class {
                             this._value = true;
                             break;
                         default:
-                            throw new mxnet.Error("Unsupported attribute boolean value '" + value + "'.");
+                            throw new mxnet.Error(`Unsupported attribute boolean value '${value}'.`);
                     }
                     break;
-                case 'int32':
-                    number = Number.parseInt(this._value, 10);
+                case 'int32': {
+                    const number = Number.parseInt(this._value, 10);
                     this._value = Number.isNaN(this._value - number) ? value : number;
                     break;
+                }
                 case 'float32':
-                case 'float64':
-                    number = Number.parseFloat(this._value);
+                case 'float64': {
+                    const number = Number.parseFloat(this._value);
                     this._value = Number.isNaN(this._value - number) ? value : number;
                     break;
+                }
                 case 'int32[]':
                     if (this._value.length > 2 && this._value.startsWith('(') && this._value.endsWith(')')) {
                         let array = [];
@@ -678,20 +691,20 @@ mxnet.Attribute = class {
                             .map((item) => item.trim())
                             .map((item) => item.endsWith('L') ? item.substring(0, item.length - 1) : item);
                         for (const item of items) {
-                            number = Number.parseInt(item, 10);
-                            if (Number.isNaN(item - number)) {
+                            const value = Number.parseInt(item, 10);
+                            if (Number.isNaN(item - value)) {
                                 array = null;
-                            } else if (array != null) {
-                                array.push(number);
+                            } else if (array !== null) {
+                                array.push(value);
                             }
                         }
-                        if (array != null) {
+                        if (array !== null) {
                             this._value = array;
                         }
                     }
                     break;
                 default:
-                    throw new mxnet.Error("Unsupported attribute type '" + metadata.type + "'.");
+                    throw new mxnet.Error(`Unsupported attribute type '${metadata.type}'.`);
             }
         }
         if (metadata) {
@@ -699,17 +712,17 @@ mxnet.Attribute = class {
                 this._visible = false;
             } else if (metadata.default !== undefined) {
                 let defaultValue = metadata.default;
-                if (this._value == defaultValue) {
+                if (this._value === defaultValue) {
                     this._visible = false;
                 } else if (Array.isArray(this._value) && Array.isArray(defaultValue)) {
                     defaultValue = defaultValue.slice(0, defaultValue.length);
-                    if (defaultValue.length > 1 && defaultValue[defaultValue.length - 1] == null) {
+                    if (defaultValue.length > 1 && defaultValue[defaultValue.length - 1] === null) {
                         defaultValue.pop();
                         while (defaultValue.length < this._value.length) {
                             defaultValue.push(defaultValue[defaultValue.length - 1]);
                         }
                     }
-                    if (this._value.every((item, index) => item == defaultValue[index])) {
+                    if (this._value.every((item, index) => item === defaultValue[index])) {
                         this._visible = false;
                     }
                 }
@@ -730,7 +743,7 @@ mxnet.Attribute = class {
     }
 
     get visible() {
-        return this._visible == false ? false : true;
+        return this._visible !== false;
     }
 };
 
@@ -771,7 +784,7 @@ mxnet.TensorType = class {
             case 5: this._dataType = 'int8'; break;
             case 6: this._dataType = 'int64'; break;
             case -1: this._dataType = '?'; break;
-            default: throw new mxnet.Error("Unsupported type '" + dataType + "'.");
+            default: throw new mxnet.Error(`Unsupported type '${dataType}'.`);
         }
         this._shape = shape;
     }
@@ -801,10 +814,10 @@ mxnet.TensorShape = class {
 
     toString() {
         if (this._dimensions) {
-            if (this._dimensions.length == 0) {
+            if (this._dimensions.length === 0) {
                 return '';
             }
-            return '[' + this._dimensions.map((dimension) => dimension.toString()).join(',') + ']';
+            return `[${this._dimensions.map((dimension) => dimension.toString()).join(',')}]`;
         }
         return '';
     }
@@ -812,26 +825,28 @@ mxnet.TensorShape = class {
 
 mxnet.ndarray = class {
 
-    static load(buffer) {
+    static load(reader) {
         // NDArray::Load(dmlc::Stream* fi, std::vector<NDArray>* data, std::vector<std::string>* keys)
         const map = new Map();
-        const reader = new mxnet.BinaryReader(buffer);
-        if (reader.uint64() !== 0x112) { // kMXAPINDArrayListMagic
+        reader = new mxnet.BinaryReader(reader);
+        if (reader.uint64().toNumber() !== 0x112) { // kMXAPINDArrayListMagic
             throw new mxnet.Error('Invalid signature.');
         }
-        if (reader.uint64() !== 0) {
+        if (reader.uint64().toNumber() !== 0) {
             throw new mxnet.Error('Invalid reserved block.');
         }
-        const data = new Array(reader.uint64());
+        const data = new Array(reader.uint64().toNumber());
         for (let i = 0; i < data.length; i++) {
             data[i] = new mxnet.ndarray.NDArray(reader);
         }
         const decoder = new TextDecoder('ascii');
-        const names = new Array(reader.uint64());
+        const names = new Array(reader.uint64().toNumber());
         for (let i = 0; i < names.length; i++) {
-            names[i] = decoder.decode(reader.read(reader.uint64()));
+            const size = reader.uint64().toNumber();
+            const buffer = reader.read(size);
+            names[i] = decoder.decode(buffer);
         }
-        if (names.length != data.length) {
+        if (names.length !== data.length) {
             throw new mxnet.Error('Label count mismatch.');
         }
         for (let i = 0; i < names.length; i++) {
@@ -844,7 +859,7 @@ mxnet.ndarray = class {
 mxnet.ndarray.NDArray = class {
 
     constructor(reader) {
-        mxnet.ndarray.NDArray._dataTypeSizeTable = [ 4, 8, 2, 1, 4, 1, 8 ];
+        mxnet.ndarray.NDArray._dataTypeSizeTable = [4, 8, 2, 1, 4, 1, 8];
         switch (reader.uint32()) {
             case 0xf993faca: { // NDARRAY_V3_MAGIC
                 throw new mxnet.Array('mxnet.ndarray.NDArray v3 not supported.');
@@ -856,7 +871,7 @@ mxnet.ndarray.NDArray = class {
                     case 0: num_aux_data = 0; break; // kDefaultStorage
                     case 1: num_aux_data = 1; break; // kRowSparseStorage
                     case 2: num_aux_data = 2; break; // kCSRStorage
-                    default: throw mxnet.Error("Unsupported NDArray type '" + stype + "'.");
+                    default: throw mxnet.Error(`Unsupported NDArray type '${stype}'.`);
                 }
                 this.sshape = null;
                 if (num_aux_data > 0) {
@@ -904,22 +919,42 @@ mxnet.ndarray.NDArray = class {
     }
 };
 
-mxnet.BinaryReader = class extends base.BinaryReader {
+mxnet.BinaryReader = class {
+
+    constructor(reader) {
+        this._reader = reader;
+    }
+
+    skip(offset) {
+        this._reader.skip(offset);
+    }
+
+    read(length) {
+        return this._reader.read(length);
+    }
+
+    uint32() {
+        return this._reader.uint32();
+    }
 
     uint32s() {
-        const count = this.uint32();
-        const array = new Array(count);
-        for (let i = 0; i < array.length; i++) {
+        const size = this.uint32();
+        const array = new Array(size);
+        for (let i = 0; i < size; i++) {
             array[i] = this.uint32();
         }
         return array;
     }
 
+    uint64() {
+        return this._reader.uint64();
+    }
+
     uint64s() {
-        const count = this.uint32();
-        const array = new Array(count);
-        for (let i = 0; i < array.length; i++) {
-            array[i] = this.uint64();
+        const size = this.uint32();
+        const array = new Array(size);
+        for (let i = 0; i < size; i++) {
+            array[i] = this.uint64().toNumber();
         }
         return array;
     }
@@ -943,6 +978,4 @@ mxnet.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = mxnet.ModelFactory;
-}
+export const ModelFactory = mxnet.ModelFactory;

@@ -1,10 +1,13 @@
-const path = require('path');
-const flatc = require('./flatc');
-const fs = require('fs').promises;
+
+import * as path from 'path';
+import * as fs from 'fs/promises';
+import * as url from 'url';
+import * as flatc from './flatc.js';
 
 const main = async () => {
-    const schema = path.join(__dirname, '..', 'third_party', 'source', 'megengine', 'src', 'serialization', 'fbs', 'schema_v2.fbs');
-    const file = path.join(__dirname, '..', 'source', 'megengine-metadata.json');
+    const dirname = path.dirname(url.fileURLToPath(import.meta.url));
+    const schema = path.join(dirname, '..', 'third_party', 'source', 'megengine', 'src', 'serialization', 'fbs', 'schema_v2.fbs');
+    const file = path.join(dirname, '..', 'source', 'megengine-metadata.json');
     const input = await fs.readFile(file, 'utf-8');
     const json = JSON.parse(input);
     const category = {
@@ -47,52 +50,49 @@ const main = async () => {
     const attributes = new Map();
     for (const operator of json) {
         if (operators.has(operator.name)) {
-            throw new Error("Duplicate operator '" + operator.name + "'.");
+            throw new Error(`Duplicate operator '${operator.name}'.`);
         }
         operators.set(operator.name, operator);
         if (operator && operator.attributes) {
             for (const attribute of operator.attributes) {
-                const name = operator.name + ':' + attribute.name;
+                const name = `${operator.name}:${attribute.name}`;
                 attributes.set(name, attribute);
             }
         }
     }
     const root = new flatc.Root('megengine');
-    await root.load([], [ schema ]);
+    await root.load([], [schema]);
     const namespace = root.find('mgb.serialization.fbs.param', flatc.Namespace);
     const operatorParams = namespace.children;
-    for (const op of operatorParams) {
-        const op_key = op[ 0 ];
-        const op_table = op[ 1 ];
-        if (op_table instanceof flatc.Enum) {
+    for (const [name, op] of operatorParams) {
+        if (op instanceof flatc.Enum) {
             continue;
         }
-        if (op_table && op_table.fields.size > 0) {
-            if (!operators.has(op_key)) {
-                const operator = { name: op_key };
-                operators.set(op_key, operator);
+        if (op && op.fields.size > 0) {
+            if (!operators.has(name)) {
+                const operator = { name };
+                operators.set(name, operator);
                 json.push(operator);
             }
-            const operator = operators.get(op_key);
-            if (category[ op_key.replace(/V(\d+)$/, '') ]) {
-                operator.category = category[ op_key.replace(/V(\d+)$/, '') ];
+            const operator = operators.get(name);
+            const k = name.replace(/V\d+$/, '');
+            if (category[k]) {
+                operator.category = category[k];
             }
             operator.attributes = operator.attributes || [];
-            for (const field of op_table.fields) {
-                const field_name = field[ 0 ];
-                const field_table = field[ 1 ];
-                const attr_key = op_key + ':' + field_name;
+            for (const [field_name, field] of op.fields) {
+                const attr_key = `${name}:${field_name}`;
                 if (!attributes.has(attr_key)) {
                     const attribute = { name: field_name };
                     attributes.set(attr_key, attribute);
                     operator.attributes.push(attribute);
                 }
                 const attribute = attributes.get(attr_key);
-                const type = field_table.type;
-                let defaultValue = field_table.defaultValue;
+                const type = field.type;
+                let defaultValue = field.defaultValue;
                 if (type instanceof flatc.Enum) {
                     if (!type.keys.has(defaultValue)) {
-                        throw new Error("Invalid '" + type.name + "' default value '" + defaultValue + "'.");
+                        throw new Error(`Invalid '${type.name}' default value '${defaultValue}'.`);
                     }
                     defaultValue = type.keys.get(defaultValue);
                 }

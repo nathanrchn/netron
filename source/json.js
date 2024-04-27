@@ -1,7 +1,8 @@
 
-var json = {};
-var bson = {};
-var text = require('./text');
+import * as text from './text.js';
+
+const json = {};
+const bson = {};
 
 json.TextReader = class {
 
@@ -66,7 +67,7 @@ json.TextReader = class {
         this._position = 0;
         this._char = this._decoder.decode();
         this._whitespace();
-        let obj = undefined;
+        let obj = null;
         let first = true;
         for (;;) {
             if (Array.isArray(obj)) {
@@ -149,7 +150,7 @@ json.TextReader = class {
                         case '__proto__':
                         case 'constructor':
                         case 'prototype':
-                            throw new json.Error("Invalid key '" + key + "'" + this._location());
+                            throw new json.Error(`Invalid key '${key}' ${this._location()}`);
                         default:
                             break;
                     }
@@ -206,7 +207,14 @@ json.TextReader = class {
                         break;
                     }
                     default: {
-                        const value = c === '"' ? this._string() : c >= '0' && c <= '9' ? this._number() : this._literal();
+                        let value = null;
+                        if (c === '"') {
+                            value = this._string();
+                        } else if (c >= '0' && c <= '9') {
+                            value = this._number();
+                        } else {
+                            value = this._literal();
+                        }
                         this._whitespace();
                         if (this._char !== undefined) {
                             this._unexpected();
@@ -306,13 +314,13 @@ json.TextReader = class {
                 this._next();
             }
         }
-        return +value;
+        return Number(value);
     }
 
     _string() {
         let value = '';
         this._next();
-        while (this._char != '"') {
+        while (this._char !== '"') {
             if (this._char === '\\') {
                 this._next();
                 if (this._char === 'u') {
@@ -364,21 +372,21 @@ json.TextReader = class {
         } else {
             if (c < ' ' || c > '\x7F') {
                 const name = Object.keys(this._escape).filter((key) => this._escape[key] === c);
-                c = (name.length === 1) ? '\\' + name : '\\u' + ('000' + c.charCodeAt(0).toString(16)).slice(-4);
+                c = (name.length === 1) ? `\\${name}` : `\\u${(`000${c.charCodeAt(0).toString(16)}`).slice(-4)}`;
             }
-            c = "token '" + c + "'";
+            c = `token '${c}'`;
         }
-        throw new json.Error('Unexpected ' + c + this._location());
+        throw new json.Error(`Unexpected ${c} ${this._location()}`);
     }
 
     _location() {
         let line = 1;
         let column = 1;
         this._decoder.position = 0;
-        let c;
+        let c = '';
         do {
             if (this._decoder.position === this._position) {
-                return ' at ' + line.toString() + ':' + column.toString() + '.';
+                return `at ${line}:${column}.`;
             }
             c = this._decoder.decode();
             if (c === '\n') {
@@ -389,7 +397,7 @@ json.TextReader = class {
             }
         }
         while (c !== undefined);
-        return ' at ' + line.toString() + ':' + column.toString() + '.';
+        return `at ${line}:${column}.`;
     }
 };
 
@@ -413,14 +421,14 @@ json.BinaryReader = class {
         const skip = (offset) => {
             position += offset;
             if (position > length) {
-                throw new bson.Error('Expected ' + (position + length) + ' more bytes. The file might be corrupted. Unexpected end of file.');
+                throw new bson.Error(`Expected ${position + length} more bytes. The file might be corrupted. Unexpected end of file.`);
             }
         };
         const header = () => {
             const start = position;
             skip(4);
             const size = view.getInt32(start, 4);
-            if (size < 5 || start + size > length || buffer[start + size - 1] != 0x00) {
+            if (size < 5 || start + size > length || buffer[start + size - 1] !== 0x00) {
                 throw new bson.Error('Invalid file size.');
             }
         };
@@ -430,7 +438,7 @@ json.BinaryReader = class {
         for (;;) {
             skip(1);
             const type = buffer[position - 1];
-            if (type == 0x00) {
+            if (type === 0x00) {
                 if (stack.length === 0) {
                     break;
                 }
@@ -454,7 +462,7 @@ json.BinaryReader = class {
                     const start = position;
                     skip(size);
                     value = utf8Decoder.decode(buffer.subarray(start, position - 1));
-                    if (buffer[position - 1] != '0x00') {
+                    if (buffer[position - 1] !== 0) {
                         throw new bson.Error('String missing terminal 0.');
                     }
                     break;
@@ -475,7 +483,7 @@ json.BinaryReader = class {
                     const size = view.getInt32(start, true);
                     const subtype = buffer[start + 4];
                     if (subtype !== 0x00) {
-                        throw new bson.Error("Unsupported binary subtype '" + subtype + "'.");
+                        throw new bson.Error(`Unsupported binary subtype '${subtype}'.`);
                     }
                     skip(size);
                     value = buffer.subarray(start + 5, position);
@@ -485,7 +493,7 @@ json.BinaryReader = class {
                     skip(1);
                     value = buffer[position - 1];
                     if (value > 1) {
-                        throw new bson.Error("Invalid boolean value '" + value + "'.");
+                        throw new bson.Error(`Invalid boolean value '${value}'.`);
                     }
                     value = value === 1 ? true : false;
                     break;
@@ -502,22 +510,22 @@ json.BinaryReader = class {
                 case 0x11: { // uint64
                     const start = position;
                     skip(8);
-                    value = view.getUint64(start, true).toNumber();
+                    value = Number(view.getBigUint64(start, true));
                     break;
                 }
                 case 0x12: { // int64
                     const start = position;
                     skip(8);
-                    value = view.getInt64(start, true).toNumber();
+                    value = Number(view.getBigInt64(start, true));
                     break;
                 }
                 default: {
-                    throw new bson.Error("Unsupported value type '" + type + "'.");
+                    throw new bson.Error(`Unsupported value type '${type}'.`);
                 }
             }
             if (Array.isArray(obj))  {
                 if (obj.length !== parseInt(key, 10)) {
-                    throw new bson.Error("Invalid array index '" + key + "'.");
+                    throw new bson.Error(`Invalid array index '${key}'.`);
                 }
                 obj.push(value);
             } else {
@@ -525,7 +533,7 @@ json.BinaryReader = class {
                     case '__proto__':
                     case 'constructor':
                     case 'prototype':
-                        throw new bson.Error("Invalid key '" + key + "' at " + position.toString() + "'.");
+                        throw new bson.Error(`Invalid key '${key}' at ${position}'.`);
                     default:
                         break;
                 }
@@ -537,7 +545,7 @@ json.BinaryReader = class {
             }
         }
         if (position !== length) {
-            throw new bson.Error("Unexpected data at '" + position.toString() + "'.");
+            throw new bson.Error(`Unexpected data at '${position}'.`);
         }
         return obj;
     }
@@ -559,7 +567,5 @@ bson.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.TextReader = json.TextReader;
-    module.exports.BinaryReader = json.BinaryReader;
-}
+export const TextReader = json.TextReader;
+export const BinaryReader = json.BinaryReader;

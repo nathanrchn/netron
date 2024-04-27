@@ -2823,11 +2823,12 @@
     "inputs": [
       {
         "name": "resource",
-        "description": "Resource variable for concatenated input tensors across all dimensions.\n  }\n  in_arg {\n    name: \"inputs\"\n    description: <<END\nInput tensor slices in row-major order to merge across all dimensions. All\ninputs must have the same shape.\n  }\n  out_arg {\n    name: \"output\"\n    description: <<END\nOutput tensor formed from merging input slices based on num_concats defined.",
+        "description": "Resource variable for concatenated input tensors across all dimensions.",
         "type": 20
       },
       {
         "name": "inputs",
+        "description": "Input tensor slices in row-major order to merge across all dimensions. All\ninputs must have the same shape.",
         "numberAttr": "N",
         "typeAttr": "T"
       }
@@ -3838,6 +3839,12 @@
         "default": 0
       },
       {
+        "name": "mixed_priority_policy",
+        "type": "string",
+        "description": "Must be one of the following: `low_priority_padding_with_max_batch_size`, `low_priority_padding_with_next_allowed_batch_size`, `priority_isolation`.",
+        "default": "low_priority_padding_with_max_batch_size"
+      },
+      {
         "name": "Tin",
         "type": "type[]",
         "description": "the types of tensors to be batched.",
@@ -3948,6 +3955,16 @@
         "type": "boolean",
         "description": "If `True`, adjoint the slices of `y`. Defaults to `False`.",
         "default": false
+      },
+      {
+        "name": "grad_x",
+        "type": "boolean",
+        "default": false
+      },
+      {
+        "name": "grad_y",
+        "type": "boolean",
+        "default": false
       }
     ],
     "inputs": [
@@ -3990,6 +4007,16 @@
         "name": "adj_y",
         "type": "boolean",
         "description": "If `True`, adjoint the slices of `y`. Defaults to `False`.",
+        "default": false
+      },
+      {
+        "name": "grad_x",
+        "type": "boolean",
+        "default": false
+      },
+      {
+        "name": "grad_y",
+        "type": "boolean",
         "default": false
       }
     ],
@@ -4043,6 +4070,16 @@
         "name": "adj_y",
         "type": "boolean",
         "description": "If `True`, adjoint the slices of `y`. Defaults to `False`.",
+        "default": false
+      },
+      {
+        "name": "grad_x",
+        "type": "boolean",
+        "default": false
+      },
+      {
+        "name": "grad_y",
+        "type": "boolean",
         "default": false
       }
     ],
@@ -9144,6 +9181,59 @@
     ]
   },
   {
+    "name": "ComputeDedupDataSize",
+    "summary": "An op computes the size of the deduplication data from embedding core and returns the updated config.",
+    "description": "This op is to compute size of the deduplication data so to provide this\ninformation to the op that computes the tuple mask of deduplication data can\nhave static output shape.",
+    "attributes": [
+      {
+        "name": "config",
+        "type": "string",
+        "description": "Serialized TPUEmbeddingConfiguration proto."
+      }
+    ],
+    "outputs": [
+      {
+        "name": "num_elements",
+        "description": "The size of the deduplicated data from infeed.",
+        "type": 3
+      }
+    ]
+  },
+  {
+    "name": "ComputeDedupDataSizeV2",
+    "summary": "An op computes the size of the deduplication data from embedding core and returns the updated config.",
+    "description": "This op is to compute size of the deduplication data so to provide this\ninformation to the op that computes the tuple mask of deduplication data can\nhave static output shape.",
+    "attributes": [
+      {
+        "name": "config",
+        "type": "string",
+        "description": "Serialized TPUEmbeddingConfiguration proto."
+      },
+      {
+        "name": "embedding_partitions",
+        "type": "string",
+        "description": "Serialized EmbeddingPartitionsProto proto."
+      },
+      {
+        "name": "hbm_buffers_config",
+        "type": "string",
+        "description": "Serialized HbmBuffersConfig proto."
+      },
+      {
+        "name": "tpu_topology",
+        "type": "string",
+        "description": "Serialized TpuTopologyArgsProto proto."
+      }
+    ],
+    "outputs": [
+      {
+        "name": "num_elements",
+        "description": "The size of the deduplicated data from infeed.",
+        "type": 3
+      }
+    ]
+  },
+  {
     "name": "ComputeDedupDataTupleMask",
     "summary": "An op computes tuple mask of deduplication data from embedding core.",
     "description": "The deduplication data receiving from embedding core is a Tensor with\ntype=DT_VARIANT. The tensor itself is an XLA nested tuple, whose elements are\nrank 1 tensors. This op is to represents types and length of these elements.",
@@ -9152,6 +9242,40 @@
         "name": "config",
         "type": "string",
         "description": "Serialized TPUEmbeddingConfiguration proto."
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output_shape",
+        "description": "A 2-D int tensor represent mask of deduplication data tuple generated by\n`XlaRecvTPUEmbeddingDeduplicationData`. The tuple has several integer and float\ntype 1-D tensor tuple elements. The first dimenion of this output_shape 2-D\ntensor is tensor type of tuple elements, `0` represents integer tensor, `1`\nrepresents float tensor. The second dimension of `output_shape` gives length of\neach tuple element.",
+        "type": 3
+      }
+    ]
+  },
+  {
+    "name": "ComputeDedupDataTupleMaskV2",
+    "summary": "An op computes tuple mask of deduplication data from embedding core.",
+    "description": "The deduplication data receiving from embedding core is a Tensor with\ntype=DT_VARIANT. The tensor itself is an XLA nested tuple, whose elements are\nrank 1 tensors. This op is to represents types and length of these elements.",
+    "attributes": [
+      {
+        "name": "config",
+        "type": "string",
+        "description": "Serialized TPUEmbeddingConfiguration proto."
+      },
+      {
+        "name": "embedding_partitions",
+        "type": "string",
+        "description": "Serialized EmbeddingPartitionsProto proto."
+      },
+      {
+        "name": "hbm_buffers_config",
+        "type": "string",
+        "description": "Serialized HbmBuffersConfig proto."
+      },
+      {
+        "name": "tpu_topology",
+        "type": "string",
+        "description": "Serialized TpuTopologyArgsProto proto."
       }
     ],
     "outputs": [
@@ -10347,6 +10471,227 @@
       {
         "name": "output",
         "typeAttr": "T"
+      }
+    ]
+  },
+  {
+    "name": "ConvertToCooTensor",
+    "attributes": [
+      {
+        "name": "sample_count",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "combiner",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "indices_or_row_splits",
+        "type": 3
+      },
+      {
+        "name": "values",
+        "type": 3
+      },
+      {
+        "name": "weights",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "row_ids",
+        "type": 3
+      },
+      {
+        "name": "col_ids",
+        "type": 3
+      },
+      {
+        "name": "gains",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "ConvertToListOfSparseCoreCooTensors",
+    "attributes": [
+      {
+        "name": "sample_count",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_sc_per_chip",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "row_offset",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "col_offset",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "col_shift",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "num_sc_shards",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "stacked_table_sample_count",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "combiner",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "indices_or_row_splits",
+        "type": 3
+      },
+      {
+        "name": "values",
+        "type": 3
+      },
+      {
+        "name": "weights",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "row_ids_list",
+        "numberAttr": "num_sc_per_chip",
+        "type": 3
+      },
+      {
+        "name": "col_ids_list",
+        "numberAttr": "num_sc_per_chip",
+        "type": 3
+      },
+      {
+        "name": "gains_list",
+        "numberAttr": "num_sc_per_chip",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "ConvertToSparseCoreCsrWrappedCooTensor",
+    "attributes": [
+      {
+        "name": "sample_count_per_sc",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_replica",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_minibatches_per_sc",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_ids_per_chip_per_sample",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_vocab_size",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "feature_width",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_sc_per_chip",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      },
+      {
+        "name": "allow_id_dropping",
+        "type": "boolean"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "sorted_row_ids_list",
+        "numberAttr": "num_sc_per_chip",
+        "type": 3
+      },
+      {
+        "name": "sorted_col_ids_list",
+        "numberAttr": "num_sc_per_chip",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains_list",
+        "numberAttr": "num_sc_per_chip",
+        "type": 1
+      },
+      {
+        "name": "id_counts_list",
+        "numberAttr": "num_sc_per_chip",
+        "type": 3
+      },
+      {
+        "name": "splits",
+        "type": 9
+      }
+    ],
+    "outputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "row_pointers_unpadded_size",
+        "type": 3
+      },
+      {
+        "name": "ids_unpadded_size",
+        "type": 3
+      },
+      {
+        "name": "num_minibatches_per_sc",
+        "type": 3
       }
     ]
   },
@@ -12495,6 +12840,25 @@
     ]
   },
   {
+    "name": "DatasetFingerprint",
+    "summary": "Returns the fingerprint of `input_dataset`.",
+    "description": "Returns the fingerprint of `input_dataset`.",
+    "inputs": [
+      {
+        "name": "input_dataset",
+        "description": "A variant tensor representing the dataset to return fingerprint for.",
+        "type": 21
+      }
+    ],
+    "outputs": [
+      {
+        "name": "fingerprint",
+        "description": "The fingerprint of `input_dataset` in `uint64`",
+        "type": 23
+      }
+    ]
+  },
+  {
     "name": "DatasetFromGraph",
     "summary": "Creates a dataset from the given `graph_def`.",
     "description": "Creates a dataset from the provided `graph_def`.",
@@ -14211,7 +14575,7 @@
   },
   {
     "name": "Dequantize",
-    "category": "Tensor",
+    "category": "Quantization",
     "summary": "Dequantize the 'input' tensor into a float or bfloat16 Tensor.",
     "description": "[min_range, max_range] are scalar floats that specify the range for\nthe output. The 'mode' attribute controls exactly which calculations are\nused to convert the float values to their quantized equivalents.\n\nIn 'MIN_COMBINED' mode, each value of the tensor will undergo the following:\n\n```\nif T == qint8: in[i] += (range(T) + 1)/ 2.0\nout[i] = min_range + (in[i]* (max_range - min_range) / range(T))\n```\nhere `range(T) = numeric_limits<T>::max() - numeric_limits<T>::min()`\n\n*MIN_COMBINED Mode Example*\n\nIf the input comes from a QuantizedRelu6, the output type is\nquint8 (range of 0-255) but the possible range of QuantizedRelu6 is\n0-6.  The min_range and max_range values are therefore 0.0 and 6.0.\nDequantize on quint8 will take each value, cast to float, and multiply\nby 6 / 255.\nNote that if quantizedtype is qint8, the operation will additionally add\neach value by 128 prior to casting.\n\nIf the mode is 'MIN_FIRST', then this approach is used:\n\n```c++\nnum_discrete_values = 1 << (# of bits in T)\nrange_adjust = num_discrete_values / (num_discrete_values - 1)\nrange = (range_max - range_min) * range_adjust\nrange_scale = range / num_discrete_values\nconst double offset_input = static_cast<double>(input) - lowest_quantized;\nresult = range_min + ((input - numeric_limits<T>::min()) * range_scale)\n```\n\nIf the mode is `SCALED`, dequantization is performed by multiplying each\ninput value by a scaling_factor. (Thus an input of 0 always maps to 0.0).\n\nThe scaling_factor is determined from `min_range`, `max_range`, and\n`narrow_range` in a way that is compatible with `QuantizeAndDequantize{V2|V3}`\nand `QuantizeV2`, using the following algorithm:\n\n```c++\n\n  const int min_expected_T = std::numeric_limits<T>::min() +\n    (narrow_range ? 1 : 0);\n  const int max_expected_T = std::numeric_limits<T>::max();\n  const float max_expected_T = std::numeric_limits<float>::max();\n\n  const float scale_factor =\n    (std::numeric_limits<T>::min() == 0) ? (max_range / max_expected_T)\n                                         : std::max(min_range / min_expected_T,\n                                                    max_range / max_expected_T);\n```",
     "attributes": [
@@ -15087,7 +15451,7 @@
   {
     "name": "DynamicStitch",
     "summary": "Interleave the values from the `data` tensors into a single tensor.",
-    "description": "Builds a merged tensor such that\n\n```python\n    merged[indices[m][i, ..., j], ...] = data[m][i, ..., j, ...]\n```\n\nFor example, if each `indices[m]` is scalar or vector, we have\n\n```python\n    # Scalar indices:\n    merged[indices[m], ...] = data[m][...]\n\n    # Vector indices:\n    merged[indices[m][i], ...] = data[m][i, ...]\n```\n\nEach `data[i].shape` must start with the corresponding `indices[i].shape`,\nand the rest of `data[i].shape` must be constant w.r.t. `i`.  That is, we\nmust have `data[i].shape = indices[i].shape + constant`.  In terms of this\n`constant`, the output shape is\n\n    merged.shape = [max(indices)] + constant\n\nValues are merged in order, so if an index appears in both `indices[m][i]` and\n`indices[n][j]` for `(m,i) < (n,j)` the slice `data[n][j]` will appear in the\nmerged result. If you do not need this guarantee, ParallelDynamicStitch might\nperform better on some devices.\n\nFor example:\n\n```python\n    indices[0] = 6\n    indices[1] = [4, 1]\n    indices[2] = [[5, 2], [0, 3]]\n    data[0] = [61, 62]\n    data[1] = [[41, 42], [11, 12]]\n    data[2] = [[[51, 52], [21, 22]], [[1, 2], [31, 32]]]\n    merged = [[1, 2], [11, 12], [21, 22], [31, 32], [41, 42],\n              [51, 52], [61, 62]]\n```\n\nThis method can be used to merge partitions created by `dynamic_partition`\nas illustrated on the following example:\n\n```python\n    # Apply function (increments x_i) on elements for which a certain condition\n    # apply (x_i != -1 in this example).\n    x=tf.constant([0.1, -1., 5.2, 4.3, -1., 7.4])\n    condition_mask=tf.not_equal(x,tf.constant(-1.))\n    partitioned_data = tf.dynamic_partition(\n        x, tf.cast(condition_mask, tf.int32) , 2)\n    partitioned_data[1] = partitioned_data[1] + 1.0\n    condition_indices = tf.dynamic_partition(\n        tf.range(tf.shape(x)[0]), tf.cast(condition_mask, tf.int32) , 2)\n    x = tf.dynamic_stitch(condition_indices, partitioned_data)\n    # Here x=[1.1, -1., 6.2, 5.3, -1, 8.4], the -1. values remain\n    # unchanged.\n```\n\n<div style=\"width:70%; margin:auto; margin-bottom:10px; margin-top:20px;\">\n<img style=\"width:100%\" src=\"https://www.tensorflow.org/images/DynamicStitch.png\" alt>\n</div>",
+    "description": "Builds a merged tensor such that\n\n```python\n    merged[indices[m][i, ..., j], ...] = data[m][i, ..., j, ...]\n```\n\nFor example, if each `indices[m]` is scalar or vector, we have\n\n```python\n    # Scalar indices:\n    merged[indices[m], ...] = data[m][...]\n\n    # Vector indices:\n    merged[indices[m][i], ...] = data[m][i, ...]\n```\n\nEach `data[i].shape` must start with the corresponding `indices[i].shape`,\nand the rest of `data[i].shape` must be constant w.r.t. `i`.  That is, we\nmust have `data[i].shape = indices[i].shape + constant`.  In terms of this\n`constant`, the output shape is\n\n    merged.shape = [max(indices) + 1] + constant\n\nValues are merged in order, so if an index appears in both `indices[m][i]` and\n`indices[n][j]` for `(m,i) < (n,j)` the slice `data[n][j]` will appear in the\nmerged result. If you do not need this guarantee, ParallelDynamicStitch might\nperform better on some devices.\n\nFor example:\n\n```python\n    indices[0] = 6\n    indices[1] = [4, 1]\n    indices[2] = [[5, 2], [0, 3]]\n    data[0] = [61, 62]\n    data[1] = [[41, 42], [11, 12]]\n    data[2] = [[[51, 52], [21, 22]], [[1, 2], [31, 32]]]\n    merged = [[1, 2], [11, 12], [21, 22], [31, 32], [41, 42],\n              [51, 52], [61, 62]]\n```\n\nThis method can be used to merge partitions created by `dynamic_partition`\nas illustrated on the following example:\n\n```python\n    # Apply function (increments x_i) on elements for which a certain condition\n    # apply (x_i != -1 in this example).\n    x=tf.constant([0.1, -1., 5.2, 4.3, -1., 7.4])\n    condition_mask=tf.not_equal(x,tf.constant(-1.))\n    partitioned_data = tf.dynamic_partition(\n        x, tf.cast(condition_mask, tf.int32) , 2)\n    partitioned_data[1] = partitioned_data[1] + 1.0\n    condition_indices = tf.dynamic_partition(\n        tf.range(tf.shape(x)[0]), tf.cast(condition_mask, tf.int32) , 2)\n    x = tf.dynamic_stitch(condition_indices, partitioned_data)\n    # Here x=[1.1, -1., 6.2, 5.3, -1, 8.4], the -1. values remain\n    # unchanged.\n```\n\n<div style=\"width:70%; margin:auto; margin-bottom:10px; margin-top:20px;\">\n<img style=\"width:100%\" src=\"https://www.tensorflow.org/images/DynamicStitch.png\" alt>\n</div>",
     "attributes": [
       {
         "name": "N",
@@ -18819,6 +19183,34 @@
     ]
   },
   {
+    "name": "FinalizeTPUEmbeddingV2",
+    "summary": "An op that finalizes the TPUEmbedding configuration.",
+    "inputs": [
+      {
+        "name": "common_config",
+        "description": "A string-encoded common configuration proto containing metadata\nabout the TPUEmbedding partitioner output and the HBM size (in bytes) required\nfor operation.",
+        "type": 7
+      },
+      {
+        "name": "memory_config",
+        "description": "A string-encoded memory config proto containing metadata about\nthe memory allocations reserved for TPUEmbedding.",
+        "type": 7
+      }
+    ],
+    "outputs": [
+      {
+        "name": "embedding_partitions",
+        "description": "A string-encoded embedding partitions proto describing how embedding tables are\npartitioned along their feature and ID.",
+        "type": 7
+      },
+      {
+        "name": "hbm_buffers_config",
+        "description": "A string-encoded HBM buffers config proto specifies where HBM buffers are\nlocated.",
+        "type": 7
+      }
+    ]
+  },
+  {
     "name": "Fingerprint",
     "summary": "Generates fingerprint values.",
     "description": "Generates fingerprint values of `data`.\n\nFingerprint op considers the first dimension of `data` as the batch dimension,\nand `output[i]` contains the fingerprint value generated from contents in\n`data[i, ...]` for all `i`.\n\nFingerprint op writes fingerprint values as byte arrays. For example, the\ndefault method `farmhash64` generates a 64-bit fingerprint value at a time.\nThis 8-byte value is written out as an `uint8` array of size 8, in little-endian\norder.\n\nFor example, suppose that `data` has data type `DT_INT32` and shape (2, 3, 4),\nand that the fingerprint method is `farmhash64`. In this case, the output shape\nis (2, 8), where 2 is the batch dimension size of `data`, and 8 is the size of\neach fingerprint value in bytes. `output[0, :]` is generated from 12 integers in\n`data[0, :, :]` and similarly `output[1, :]` is generated from other 12 integers\nin `data[1, :, :]`.\n\nNote that this op fingerprints the raw underlying buffer, and it does not\nfingerprint Tensor's metadata such as data type and/or shape. For example, the\nfingerprint values are invariant under reshapes and bitcasts as long as the\nbatch dimension remain the same:\n\n```\nFingerprint(data) == Fingerprint(Reshape(data, ...))\nFingerprint(data) == Fingerprint(Bitcast(data, ...))\n```\n\nFor string data, one should expect `Fingerprint(data) !=\nFingerprint(ReduceJoin(data))` in general.",
@@ -20738,6 +21130,196 @@
     ]
   },
   {
+    "name": "GetMinibatchSplitsWithPhysicalReplica",
+    "attributes": [
+      {
+        "name": "sample_count",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_replica",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_vocab_size",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "feature_width",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_sc_per_chip",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      },
+      {
+        "name": "mini_batch_splits",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "program_key",
+        "type": 7
+      },
+      {
+        "name": "row_ids",
+        "type": 3
+      },
+      {
+        "name": "col_ids",
+        "type": 3
+      },
+      {
+        "name": "gains",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "sorted_row_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_col_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "splits",
+        "type": 9
+      },
+      {
+        "name": "id_counts",
+        "type": 3
+      },
+      {
+        "name": "max_ids",
+        "type": 3
+      },
+      {
+        "name": "max_uniques",
+        "type": 3
+      }
+    ]
+  },
+  {
+    "name": "GetMinibatchesInCsrWithPhysicalReplica",
+    "attributes": [
+      {
+        "name": "sample_count",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_replica",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_minibatches_per_sc",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_ids_per_chip_per_sample",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_vocab_size",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "feature_width",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_sc_per_chip",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      },
+      {
+        "name": "mini_batch_in_csr",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "program_key",
+        "type": 7
+      },
+      {
+        "name": "row_ids",
+        "type": 3
+      },
+      {
+        "name": "col_ids",
+        "type": 3
+      },
+      {
+        "name": "gains",
+        "type": 1
+      },
+      {
+        "name": "splits",
+        "type": 9
+      },
+      {
+        "name": "id_counts",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "row_pointers_unpadded_size",
+        "type": 3
+      },
+      {
+        "name": "ids_unpadded_size",
+        "type": 3
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ]
+  },
+  {
     "name": "GetOptions",
     "summary": "Returns the `tf.data.Options` attached to `input_dataset`.",
     "inputs": [
@@ -20824,6 +21406,133 @@
         "name": "value",
         "description": "The tensor for the given handle.",
         "typeAttr": "dtype"
+      }
+    ]
+  },
+  {
+    "name": "GetStatsFromListOfSparseCoreCooTensors",
+    "attributes": [
+      {
+        "name": "sample_count_list",
+        "type": "int64[]"
+      },
+      {
+        "name": "col_offset_list",
+        "type": "int64[]"
+      },
+      {
+        "name": "num_replica",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_vocab_size",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "feature_width",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_sc_per_chip",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      },
+      {
+        "name": "N",
+        "type": "int64",
+        "minimum": 1
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_ids_list",
+        "numberAttr": "N",
+        "type": 3
+      },
+      {
+        "name": "col_ids_list",
+        "numberAttr": "N",
+        "type": 3
+      },
+      {
+        "name": "gains_list",
+        "numberAttr": "N",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "max_ids_per_sparse_core",
+        "type": 3
+      },
+      {
+        "name": "max_unique_ids_per_sparse_core",
+        "type": 3
+      }
+    ]
+  },
+  {
+    "name": "GlobalIterId",
+    "outputs": [
+      {
+        "name": "iter_id",
+        "type": 9
+      }
+    ]
+  },
+  {
+    "name": "GlobalShuffleDataset",
+    "attributes": [
+      {
+        "name": "reshuffle_each_iteration",
+        "type": "boolean",
+        "default": true
+      },
+      {
+        "name": "output_types",
+        "type": "type[]",
+        "minimum": 1
+      },
+      {
+        "name": "output_shapes",
+        "type": "shape[]",
+        "minimum": 1
+      },
+      {
+        "name": "metadata",
+        "type": "string",
+        "default": ""
+      }
+    ],
+    "inputs": [
+      {
+        "name": "input_dataset",
+        "type": 21
+      },
+      {
+        "name": "seed",
+        "type": 9
+      },
+      {
+        "name": "seed2",
+        "type": 9
+      },
+      {
+        "name": "seed_generator",
+        "type": 20
+      }
+    ],
+    "outputs": [
+      {
+        "name": "handle",
+        "type": 21
       }
     ]
   },
@@ -21914,7 +22623,7 @@
       {
         "name": "dtype",
         "type": "type",
-        "description": "Input dtype. Must be one of the following: `uint8`, `int32`, `int64`, `float16`, `float32`, `float64`."
+        "description": "Input dtype. Must be one of the following: `uint8`, `int32`, `int64`, `float16`, `bfloat16`, `float32`, `float64`."
       },
       {
         "name": "interpolation",
@@ -21961,7 +22670,7 @@
       {
         "name": "dtype",
         "type": "type",
-        "description": "Input dtype. Must be one of the following: `uint8`, `int32`, `int64`, `float16`, `float32`, `float64`."
+        "description": "Input dtype. Must be one of the following: `uint8`, `int32`, `int64`, `float16`, `bfloat16`, `float32`, `float64`."
       },
       {
         "name": "interpolation",
@@ -22174,6 +22883,68 @@
         "name": "precision",
         "description": "Computed precision at `k` as a `bool Tensor`.",
         "type": 10
+      }
+    ]
+  },
+  {
+    "name": "IndexFlatMapDataset",
+    "attributes": [
+      {
+        "name": "map_func",
+        "type": "function"
+      },
+      {
+        "name": "index_map_func",
+        "type": "function"
+      },
+      {
+        "name": "Tmap_func_args",
+        "type": "type[]",
+        "minimum": 0
+      },
+      {
+        "name": "Tindex_map_func_args",
+        "type": "type[]",
+        "minimum": 0
+      },
+      {
+        "name": "output_types",
+        "type": "type[]",
+        "minimum": 1
+      },
+      {
+        "name": "output_shapes",
+        "type": "shape[]",
+        "minimum": 1
+      },
+      {
+        "name": "metadata",
+        "type": "string",
+        "default": ""
+      }
+    ],
+    "inputs": [
+      {
+        "name": "input_dataset",
+        "type": 21
+      },
+      {
+        "name": "map_func_other_args",
+        "typeListAttr": "Tmap_func_args"
+      },
+      {
+        "name": "index_map_func_other_args",
+        "typeListAttr": "Tindex_map_func_args"
+      },
+      {
+        "name": "output_cardinality",
+        "type": 9
+      }
+    ],
+    "outputs": [
+      {
+        "name": "handle",
+        "type": 21
       }
     ]
   },
@@ -23056,6 +23827,25 @@
     "outputs": [
       {
         "name": "device",
+        "type": 7
+      }
+    ]
+  },
+  {
+    "name": "IteratorGetModelProto",
+    "summary": "Returns the serialized model proto of an iterator resource.",
+    "description": "Returns the serialized model proto of an iterator resource.",
+    "inputs": [
+      {
+        "name": "iterator",
+        "description": "An resource from an dataset iterator.",
+        "type": 20
+      }
+    ],
+    "outputs": [
+      {
+        "name": "model_proto",
+        "description": "A serialized model proto.",
         "type": 7
       }
     ]
@@ -24179,6 +24969,33 @@
         "name": "idx",
         "description": "1-D. Positions of `x` values preserved in `out`.",
         "typeAttr": "out_idx"
+      }
+    ]
+  },
+  {
+    "name": "ListSnapshotChunksDataset",
+    "attributes": [
+      {
+        "name": "output_types",
+        "type": "type[]",
+        "minimum": 1
+      },
+      {
+        "name": "output_shapes",
+        "type": "shape[]",
+        "minimum": 1
+      }
+    ],
+    "inputs": [
+      {
+        "name": "snapshot_path",
+        "type": 7
+      }
+    ],
+    "outputs": [
+      {
+        "name": "handle",
+        "type": 21
       }
     ]
   },
@@ -26165,6 +26982,16 @@
         "name": "T",
         "type": "type",
         "description": "Must be one of the following: `bfloat16`, `float16`, `float32`, `float64`, `int32`, `int64`, `uint8`, `uint16`, `uint32`, `uint64`, `complex64`, `complex128`."
+      },
+      {
+        "name": "grad_a",
+        "type": "boolean",
+        "default": false
+      },
+      {
+        "name": "grad_b",
+        "type": "boolean",
+        "default": false
       }
     ],
     "inputs": [
@@ -33093,6 +33920,7 @@
   },
   {
     "name": "QuantizeAndDequantize",
+    "category": "Quantization",
     "summary": "Use QuantizeAndDequantizeV2 instead.",
     "attributes": [
       {
@@ -33141,6 +33969,7 @@
   },
   {
     "name": "QuantizeAndDequantizeV2",
+    "category": "Quantization",
     "summary": "Quantizes then dequantizes a tensor.",
     "description": "This op simulates the precision loss from the quantized forward pass by:\n\n1. Quantizing the tensor to fixed point numbers, which should match the target\n   quantization method when it is used in inference.\n2. Dequantizing it back to floating point numbers for the following ops, most\n   likely matmul.\n\nThere are different ways to quantize. This version uses only scaling, so 0.0\nmaps to 0.\n\nFrom the specified 'num_bits' in the quantized output type, it determines\nminimum and maximum representable quantized values.\n\ne.g.\n\n*   [-128, 127] for signed, num_bits = 8, or\n*   [0, 255] for unsigned, num_bits = 8.\n\nIf range_given == False, the initial input_min, input_max will be determined\nautomatically as the minimum and maximum values in the input tensor, otherwise\nthe specified values of input_min, input_max are used.\n\nNote: If the input_min, input_max are specified, they do not need to equal the\nactual minimum and maximum values in the tensor. e.g. in some cases it may be\nbeneficial to specify these values such that the low probability extremes of the\ninput distribution are clipped.\n\nThis op determines the maximum scale_factor that would map the initial\n[input_min, input_max] range to a range that lies within the representable\nquantized range.\n\nIt determines the scale from one of input_min and input_max, then updates the\nother one to maximize the representable range.\n\ne.g.\n\n*   if the output is signed, num_bits = 8, [input_min, input_max] = [-10.0,\n    5.0]: it would use a scale_factor of -128 / -10.0 = 12.8 In this case, it\n    would update input_max to be 127 / 12.8 = 9.921875\n*   if the output is signed, num_bits = 8, [input_min, input_max] = [-10.0,\n    10.0]: it would use a scale_factor of 127 / 10.0 = 12.7 In this case, it\n    would update input_min to be 128.0 / 12.7 = -10.07874\n*   if the output is unsigned, input_min is forced to be 0, and only the\n    specified input_max is used.\n\nAfter determining the scale_factor and updating the input range, it applies the\nfollowing to each value in the 'input' tensor.\n\noutput = round(clamp(value, input_min, input_max) * scale_factor) / scale_factor.\n\nThe above round function rounds the value based on the given round_mode.\n",
     "attributes": [
@@ -33212,6 +34041,7 @@
   },
   {
     "name": "QuantizeAndDequantizeV3",
+    "category": "Quantization",
     "summary": "Quantizes then dequantizes a tensor.",
     "description": "This is almost identical to QuantizeAndDequantizeV2, except that num_bits is a\ntensor, so its value can change during training.",
     "attributes": [
@@ -33268,6 +34098,7 @@
   },
   {
     "name": "QuantizeAndDequantizeV4",
+    "category": "Quantization",
     "summary": "Quantizes then dequantizes a tensor.",
     "description": "This is almost identical to QuantizeAndDequantizeV2, except that it returns a\ngradient of 1 for inputs that are within the quantization range, or 0 otherwise.",
     "attributes": [
@@ -33339,6 +34170,7 @@
   },
   {
     "name": "QuantizeAndDequantizeV4Grad",
+    "category": "Quantization",
     "summary": "Returns the gradient of `QuantizeAndDequantizeV4`.",
     "description": "Returns a gradient of 1 for inputs that are within the quantization range,\nor 0 otherwise.",
     "attributes": [
@@ -33388,6 +34220,7 @@
   },
   {
     "name": "QuantizeDownAndShrinkRange",
+    "category": "Quantization",
     "summary": "Convert the quantized 'input' tensor into a lower-precision 'output', using the",
     "description": "actual distribution of the values to maximize the usage of the lower bit depth\nand adjusting the output min and max ranges accordingly.\n\n[input_min, input_max] are scalar floats that specify the range for the float\ninterpretation of the 'input' data. For example, if input_min is -1.0f and\ninput_max is 1.0f, and we are dealing with quint16 quantized data, then a 0\nvalue in the 16-bit data should be interpreted as -1.0f, and a 65535 means 1.0f.\n\nThis operator tries to squeeze as much precision as possible into an output with\na lower bit depth by calculating the actual min and max values found in the\ndata. For example, maybe that quint16 input has no values lower than 16,384 and\nnone higher than 49,152. That means only half the range is actually needed, all\nthe float interpretations are between -0.5f and 0.5f, so if we want to compress\nthe data into a quint8 output, we can use that range rather than the theoretical\n-1.0f to 1.0f that is suggested by the input min and max.\n\nIn practice, this is most useful for taking output from operations like\nQuantizedMatMul that can produce higher bit-depth outputs than their inputs and\nmay have large potential output ranges, but in practice have a distribution of\ninput values that only uses a small fraction of the possible range. By feeding\nthat output into this operator, we can reduce it from 32 bits down to 8 with\nminimal loss of accuracy.",
     "attributes": [
@@ -33437,6 +34270,7 @@
   },
   {
     "name": "QuantizeV2",
+    "category": "Quantization",
     "summary": "Quantize the 'input' tensor of type float to 'output' tensor of type 'T'.",
     "description": "[min_range, max_range] are scalar floats that specify the range for\nthe 'input' data. The 'mode' attribute controls exactly which calculations are\nused to convert the float values to their quantized equivalents.  The\n'round_mode' attribute controls which rounding tie-breaking algorithm is used\nwhen rounding float values to their quantized equivalents.\n\nIn 'MIN_COMBINED' mode, each value of the tensor will undergo the following:\n\n```\nout[i] = (in[i] - min_range) * range(T) / (max_range - min_range)\nif T == qint8: out[i] -= (range(T) + 1) / 2.0\n```\n\nhere `range(T) = numeric_limits<T>::max() - numeric_limits<T>::min()`\n\n*MIN_COMBINED Mode Example*\n\nAssume the input is type float and has a possible range of [0.0, 6.0] and the\noutput type is quint8 ([0, 255]). The min_range and max_range values should be\nspecified as 0.0 and 6.0. Quantizing from float to quint8 will multiply each\nvalue of the input by 255/6 and cast to quint8.\n\nIf the output type was qint8 ([-128, 127]), the operation will additionally\nsubtract each value by 128 prior to casting, so that the range of values aligns\nwith the range of qint8.\n\nIf the mode is 'MIN_FIRST', then this approach is used:\n\n```\nnum_discrete_values = 1 << (# of bits in T)\nrange_adjust = num_discrete_values / (num_discrete_values - 1)\nrange = (range_max - range_min) * range_adjust\nrange_scale = num_discrete_values / range\nquantized = round(input * range_scale) - round(range_min * range_scale) +\n  numeric_limits<T>::min()\nquantized = max(quantized, numeric_limits<T>::min())\nquantized = min(quantized, numeric_limits<T>::max())\n```\n\nThe biggest difference between this and MIN_COMBINED is that the minimum range\nis rounded first, before it's subtracted from the rounded value. With\nMIN_COMBINED, a small bias is introduced where repeated iterations of quantizing\nand dequantizing will introduce a larger and larger error.\n\n*SCALED mode Example*\n\n`SCALED` mode matches the quantization approach used in\n`QuantizeAndDequantize{V2|V3}`.\n\nIf the mode is `SCALED`, the quantization is performed by multiplying each\ninput value by a scaling_factor.\nThe scaling_factor is determined from `min_range` and `max_range` to be as large\nas possible such that the range from `min_range` to `max_range` is representable\nwithin values of type T.\n\n```c++\n\n  const int min_T = std::numeric_limits<T>::min();\n  const int max_T = std::numeric_limits<T>::max();\n  const float max_float = std::numeric_limits<float>::max();\n\n  const float scale_factor_from_min_side =\n      (min_T * min_range > 0) ? min_T / min_range : max_float;\n  const float scale_factor_from_max_side =\n      (max_T * max_range > 0) ? max_T / max_range : max_float;\n\n  const float scale_factor = std::min(scale_factor_from_min_side,\n                                      scale_factor_from_max_side);\n```\n\nWe next use the scale_factor to adjust min_range and max_range as follows:\n\n```c++\n      min_range = min_T / scale_factor;\n      max_range = max_T / scale_factor;\n```\n\n\ne.g. if T = qint8, and initially min_range = -10, and max_range = 9, we would\ncompare -128/-10.0 = 12.8 to 127/9.0 = 14.11, and set scaling_factor = 12.8\nIn this case, min_range would remain -10, but max_range would be adjusted to\n127 / 12.8 = 9.921875\n\nSo we will quantize input values in the range (-10, 9.921875) to (-128, 127).\n\nThe input tensor can now be quantized by clipping values to the range\n`min_range` to `max_range`, then multiplying by scale_factor as follows:\n\n```c++\nresult = round(min(max_range, max(min_range, input)) * scale_factor)\n```\n\nThe adjusted `min_range` and `max_range` are returned as outputs 2 and 3 of\nthis operation. These outputs should be used as the range for any further\ncalculations.\n\n\n*narrow_range (bool) attribute*\n\nIf true, we do not use the minimum quantized value.\ni.e. for int8 the quantized output, it would be restricted to the range\n-127..127 instead of the full -128..127 range.\nThis is provided for compatibility with certain inference backends.\n(Only applies to SCALED mode)\n\n\n*axis (int) attribute*\n\nAn optional `axis` attribute can specify a dimension index of the input tensor,\nsuch that quantization ranges will be calculated and applied separately for each\nslice of the tensor along that dimension. This is useful for per-channel\nquantization.\n\nIf axis is specified, min_range and max_range\n\nif `axis`=None, per-tensor quantization is performed as normal.\n\n\n*ensure_minimum_range (float) attribute*\n\nEnsures the minimum quantization range is at least this value.\nThe legacy default value for this is 0.01, but it is strongly suggested to\nset it to 0 for new uses.\n",
     "attributes": [
@@ -38774,13 +39608,14 @@
     "inputs": [
       {
         "name": "resource",
-        "description": "Resource variable of input tensor to split across all dimensions.\n  }\n  out_arg {\n    name: \"outputs\"\n    description: <<END\nOutput slices based on input and num_splits defined, in row-major order.",
+        "description": "Resource variable of input tensor to split across all dimensions.",
         "type": 20
       }
     ],
     "outputs": [
       {
         "name": "outputs",
+        "description": "Output slices based on input and num_splits defined, in row-major order.",
         "numberAttr": "N",
         "typeAttr": "T"
       }
@@ -49598,6 +50433,93 @@
     ]
   },
   {
+    "name": "SortListOfSparseCoreCooTensors",
+    "attributes": [
+      {
+        "name": "sample_count_list",
+        "type": "int64[]"
+      },
+      {
+        "name": "col_offset_list",
+        "type": "int64[]"
+      },
+      {
+        "name": "num_replica",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_vocab_size",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "feature_width",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_sc_per_chip",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_unique_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      },
+      {
+        "name": "N",
+        "type": "int64",
+        "minimum": 1
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_ids_list",
+        "numberAttr": "N",
+        "type": 3
+      },
+      {
+        "name": "col_ids_list",
+        "numberAttr": "N",
+        "type": 3
+      },
+      {
+        "name": "gains_list",
+        "numberAttr": "N",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "sorted_row_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_col_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "id_counts",
+        "type": 3
+      }
+    ]
+  },
+  {
     "name": "SpaceToBatch",
     "summary": "SpaceToBatch for 4-D tensors of type T.",
     "description": "This is a legacy version of the more general SpaceToBatchND.\n\nZero-pads and then rearranges (permutes) blocks of spatial data into batch.\nMore specifically, this op outputs a copy of the input tensor where values from\nthe `height` and `width` dimensions are moved to the `batch` dimension. After\nthe zero-padding, both `height` and `width` of the input must be divisible by the\nblock size.\n\nThe attr `block_size` must be greater than one. It indicates the block size.\n\n  * Non-overlapping blocks of size `block_size x block size` in the height and\n    width dimensions are rearranged into the batch dimension at each location.\n  * The batch of the output tensor is `batch * block_size * block_size`.\n  * Both height_pad and width_pad must be divisible by block_size.\n\nThe shape of the output will be:\n\n    [batch*block_size*block_size, height_pad/block_size, width_pad/block_size,\n     depth]\n\nSome examples:\n\n(1) For the following input of shape `[1, 2, 2, 1]` and block_size of 2:\n\n```\nx = [[[[1], [2]], [[3], [4]]]]\n```\n\nThe output tensor has shape `[4, 1, 1, 1]` and value:\n\n```\n[[[[1]]], [[[2]]], [[[3]]], [[[4]]]]\n```\n\n(2) For the following input of shape `[1, 2, 2, 3]` and block_size of 2:\n\n```\nx = [[[[1, 2, 3], [4, 5, 6]],\n      [[7, 8, 9], [10, 11, 12]]]]\n```\n\nThe output tensor has shape `[4, 1, 1, 3]` and value:\n\n```\n[[[[1, 2, 3]]], [[[4, 5, 6]]], [[[7, 8, 9]]], [[[10, 11, 12]]]]\n```\n\n(3) For the following input of shape `[1, 4, 4, 1]` and block_size of 2:\n\n```\nx = [[[[1],   [2],  [3],  [4]],\n      [[5],   [6],  [7],  [8]],\n      [[9],  [10], [11],  [12]],\n      [[13], [14], [15],  [16]]]]\n```\n\nThe output tensor has shape `[4, 2, 2, 1]` and value:\n\n```\nx = [[[[1], [3]], [[9], [11]]],\n     [[[2], [4]], [[10], [12]]],\n     [[[5], [7]], [[13], [15]]],\n     [[[6], [8]], [[14], [16]]]]\n```\n\n(4) For the following input of shape `[2, 2, 4, 1]` and block_size of 2:\n\n```\nx = [[[[1],   [2],  [3],  [4]],\n      [[5],   [6],  [7],  [8]]],\n     [[[9],  [10], [11],  [12]],\n      [[13], [14], [15],  [16]]]]\n```\n\nThe output tensor has shape `[8, 1, 2, 1]` and value:\n\n```\nx = [[[[1], [3]]], [[[9], [11]]], [[[2], [4]]], [[[10], [12]]],\n     [[[5], [7]]], [[[13], [15]]], [[[6], [8]]], [[[14], [16]]]]\n```\n\nAmong others, this operation is useful for reducing atrous convolution into\nregular convolution.",
@@ -52187,6 +53109,11 @@
           "type": "type",
           "value": 3
         }
+      },
+      {
+        "name": "sparse_gradient",
+        "type": "boolean",
+        "default": false
       }
     ],
     "inputs": [
@@ -52369,6 +53296,11 @@
           "type": "type",
           "value": 3
         }
+      },
+      {
+        "name": "sparse_gradient",
+        "type": "boolean",
+        "default": false
       }
     ],
     "inputs": [
@@ -52427,6 +53359,11 @@
           "type": "type",
           "value": 3
         }
+      },
+      {
+        "name": "sparse_gradient",
+        "type": "boolean",
+        "default": false
       }
     ],
     "inputs": [
@@ -52609,6 +53546,11 @@
           "type": "type",
           "value": 3
         }
+      },
+      {
+        "name": "sparse_gradient",
+        "type": "boolean",
+        "default": false
       }
     ],
     "inputs": [
@@ -52667,6 +53609,11 @@
           "type": "type",
           "value": 3
         }
+      },
+      {
+        "name": "sparse_gradient",
+        "type": "boolean",
+        "default": false
       }
     ],
     "inputs": [
@@ -52849,6 +53796,11 @@
           "type": "type",
           "value": 3
         }
+      },
+      {
+        "name": "sparse_gradient",
+        "type": "boolean",
+        "default": false
       }
     ],
     "inputs": [
@@ -56056,6 +57008,53 @@
     ]
   },
   {
+    "name": "StoreMinibatchStatisticsInFdo",
+    "attributes": [
+      {
+        "name": "sample_count",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_replica",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "feature_width",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "num_sc_per_chip",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      },
+      {
+        "name": "mini_batch_splits",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "program_key",
+        "type": 7
+      },
+      {
+        "name": "max_ids",
+        "type": 3
+      },
+      {
+        "name": "max_uniques",
+        "type": 3
+      }
+    ]
+  },
+  {
     "name": "StridedSlice",
     "category": "Tensor",
     "summary": "Return a strided slice from `input`.",
@@ -57105,6 +58104,28 @@
     ]
   },
   {
+    "name": "TPUAnnotateTensorsWithDynamicShape",
+    "attributes": [
+      {
+        "name": "T",
+        "type": "type[]",
+        "minimum": 1
+      }
+    ],
+    "inputs": [
+      {
+        "name": "tensors",
+        "typeListAttr": "T"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "tpu_tensors",
+        "typeListAttr": "T"
+      }
+    ]
+  },
+  {
     "name": "TPUCompilationResult",
     "summary": "Returns the result of a TPU compilation.",
     "description": "This operation returns the result of a TPU compilation as a serialized\nCompilationResultProto, which holds a status and an error message if an error\noccurred during compilation.",
@@ -57180,6 +58201,39 @@
       {
         "name": "compilation_status",
         "type": 7
+      }
+    ]
+  },
+  {
+    "name": "TPUCopyWithDynamicShape",
+    "summary": "Op that copies host tensor to device with dynamic shape support.\nFor internal use only.",
+    "attributes": [
+      {
+        "name": "N",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "T",
+        "type": "type[]",
+        "minimum": 1
+      }
+    ],
+    "inputs": [
+      {
+        "name": "tensors",
+        "typeListAttr": "T"
+      },
+      {
+        "name": "unpadded_sizes",
+        "numberAttr": "N",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "tpu_tensors",
+        "typeListAttr": "T"
       }
     ]
   },
@@ -60447,7 +61501,7 @@
     "inputs": [
       {
         "name": "input",
-        "description": "1-D or higher.",
+        "description": "Can be of any rank.",
         "typeAttr": "T"
       },
       {
@@ -62990,6 +64044,54 @@
     ]
   },
   {
+    "name": "WeightedFlatMapDataset",
+    "attributes": [
+      {
+        "name": "N",
+        "type": "int64",
+        "minimum": 2
+      },
+      {
+        "name": "M",
+        "type": "int64",
+        "minimum": 2
+      },
+      {
+        "name": "output_types",
+        "type": "type[]",
+        "minimum": 1
+      },
+      {
+        "name": "output_shapes",
+        "type": "shape[]",
+        "minimum": 1
+      },
+      {
+        "name": "metadata",
+        "type": "string",
+        "default": ""
+      }
+    ],
+    "inputs": [
+      {
+        "name": "input_datasets",
+        "numberAttr": "N",
+        "type": 21
+      },
+      {
+        "name": "weights",
+        "numberAttr": "M",
+        "type": 2
+      }
+    ],
+    "outputs": [
+      {
+        "name": "handle",
+        "type": 21
+      }
+    ]
+  },
+  {
     "name": "Where",
     "summary": "Returns locations of nonzero / true values in a tensor.",
     "description": "This operation returns the coordinates of true elements in `input`. The\ncoordinates are returned in a 2-D tensor where the first dimension (rows)\nrepresents the number of true elements, and the second dimension (columns)\nrepresents the coordinates of the true elements. Keep in mind, the shape of\nthe output tensor can vary depending on how many true values there are in\n`input`. Indices are output in row-major order.\n\nFor example:\n\n```\n# 'input' tensor is [[True, False]\n#                    [True, False]]\n# 'input' has two true values, so output has two coordinates.\n# 'input' has rank of 2, so coordinates have two indices.\nwhere(input) ==> [[0, 0],\n                  [1, 0]]\n\n# `input` tensor is [[[True, False]\n#                     [True, False]]\n#                    [[False, True]\n#                     [False, True]]\n#                    [[False, False]\n#                     [False, True]]]\n# 'input' has 5 true values, so output has 5 coordinates.\n# 'input' has rank of 3, so coordinates have three indices.\nwhere(input) ==> [[0, 0, 0],\n                  [0, 1, 0],\n                  [1, 0, 1],\n                  [1, 1, 1],\n                  [2, 1, 1]]\n\n# `input` tensor is [[[1.5,  0.0]\n#                     [-0.5, 0.0]]\n#                    [[0.0,  0.25]\n#                     [0.0,  0.75]]\n#                    [[0.0,  0.0]\n#                     [0.0,  0.01]]]\n# 'input' has 5 nonzero values, so output has 5 coordinates.\n# 'input' has rank of 3, so coordinates have three indices.\nwhere(input) ==> [[0, 0, 0],\n                  [0, 1, 0],\n                  [1, 0, 1],\n                  [1, 1, 1],\n                  [2, 1, 1]]\n\n# `input` tensor is [[[1.5 + 0.0j, 0.0  + 0.0j]\n#                     [0.0 + 0.5j, 0.0  + 0.0j]]\n#                    [[0.0 + 0.0j, 0.25 + 1.5j]\n#                     [0.0 + 0.0j, 0.75 + 0.0j]]\n#                    [[0.0 + 0.0j, 0.0  + 0.0j]\n#                     [0.0 + 0.0j, 0.01 + 0.0j]]]\n# 'input' has 5 nonzero magnitude values, so output has 5 coordinates.\n# 'input' has rank of 3, so coordinates have three indices.\nwhere(input) ==> [[0, 0, 0],\n                  [0, 1, 0],\n                  [1, 0, 1],\n                  [1, 1, 1],\n                  [2, 1, 1]]\n```",
@@ -63522,7 +64624,7 @@
     "inputs": [
       {
         "name": "inputs",
-        "description": "Input tensor slices in row-major order to merge across all dimensions. All\ninputs must have the same shape.\n  }\n  out_arg {\n    name: \"output\"\n    description: <<END\nOutput tensor formed from merging input slices based on num_concats defined.",
+        "description": "Input tensor slices in row-major order to merge across all dimensions. All\ninputs must have the same shape.",
         "numberAttr": "N",
         "typeAttr": "T"
       }
@@ -63530,6 +64632,7 @@
     "outputs": [
       {
         "name": "output",
+        "description": "Output tensor formed from merging input slices based on num_concats defined.",
         "typeAttr": "T"
       }
     ]
@@ -63669,6 +64772,54 @@
     ]
   },
   {
+    "name": "XlaRecvTPUEmbeddingActivationsV2",
+    "summary": "An op that receives embedding activations on the TPU.",
+    "description": "The TPU system performs the embedding lookups and aggregations. The results of\nthese aggregations are visible to the Tensorflow Graph as the outputs of a\nXlaRecvTPUEmbeddingActivations Op. This op returns a list containing one\nTensor of activations per table specified in the model.",
+    "attributes": [
+      {
+        "name": "num_tables",
+        "type": "int64",
+        "description": "The number of output activation tensors. If feature descriptor is\npresent in the tpu embedding config, it is equal to the number of features\notherwise equal to number of embedding tables in the model.",
+        "minimum": 1
+      },
+      {
+        "name": "config",
+        "type": "string",
+        "description": "Serialized TPUEmbeddingConfiguration proto."
+      },
+      {
+        "name": "embedding_partitions",
+        "type": "string",
+        "description": "Serialized EmbeddingPartitionsProto proto."
+      },
+      {
+        "name": "hbm_buffers_config",
+        "type": "string",
+        "description": "Serialized HbmBuffersConfig proto."
+      },
+      {
+        "name": "tpu_topology",
+        "type": "string",
+        "description": "Serialized TpuTopologyArgsProto proto."
+      }
+    ],
+    "inputs": [
+      {
+        "name": "deduplication_data",
+        "description": "A Tensor with type=DT_VARIANT containing the deduplication\ndata. The tensor is an XLA nested tuple containing N elements (where N is\nthe ratio of the number of embedding to tensor cores per TPU chip). Each\nelement of the nested tuple is a tuple of rank 1 tensors. Each tensor either\ncontains indices (DT_UINT32) for embedding lookup on the TensorCore or\nweights (DT_FLOAT) to apply to the output of the embedding lookup operation.",
+        "type": 21
+      }
+    ],
+    "outputs": [
+      {
+        "name": "outputs",
+        "description": "A TensorList of embedding activations containing one Tensor per\nembedding table in the model.",
+        "numberAttr": "num_tables",
+        "type": 1
+      }
+    ]
+  },
+  {
     "name": "XlaRecvTPUEmbeddingDeduplicationData",
     "summary": "Receives deduplication data (indices and weights) from the embedding core.",
     "description": "The deduplication data is a Tensor with type=DT_VARIANT. The tensor itself is an\nXLA nested tuple containing N elements (where N is the ratio of the number of\nembedding to tensor cores per TPU chip). Each element of the nested tuple is a\ntuple of rank 1 tensors. Each tensor either contains indices (DT_UINT32) for\nembedding lookup on the TensorCore or weights (DT_FLOAT) to apply to the output\nof the embedding lookup operation.",
@@ -63677,6 +64828,39 @@
         "name": "config",
         "type": "string",
         "description": "Serialized TPUEmbeddingConfiguration proto."
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": 21
+      }
+    ]
+  },
+  {
+    "name": "XlaRecvTPUEmbeddingDeduplicationDataV2",
+    "summary": "Receives deduplication data (indices and weights) from the embedding core.",
+    "description": "The deduplication data is a Tensor with type=DT_VARIANT. The tensor itself is an\nXLA nested tuple containing N elements (where N is the ratio of the number of\nembedding to tensor cores per TPU chip). Each element of the nested tuple is a\ntuple of rank 1 tensors. Each tensor either contains indices (DT_UINT32) for\nembedding lookup on the TensorCore or weights (DT_FLOAT) to apply to the output\nof the embedding lookup operation.",
+    "attributes": [
+      {
+        "name": "config",
+        "type": "string",
+        "description": "Serialized TPUEmbeddingConfiguration proto."
+      },
+      {
+        "name": "embedding_partitions",
+        "type": "string",
+        "description": "Serialized EmbeddingPartitionsProto proto."
+      },
+      {
+        "name": "hbm_buffers_config",
+        "type": "string",
+        "description": "Serialized HbmBuffersConfig proto."
+      },
+      {
+        "name": "tpu_topology",
+        "type": "string",
+        "description": "Serialized TpuTopologyArgsProto proto."
       }
     ],
     "outputs": [
@@ -63731,6 +64915,65 @@
     ]
   },
   {
+    "name": "XlaSendTPUEmbeddingGradientsV2",
+    "summary": "An op that performs gradient updates of embedding tables.",
+    "description": "The gradients argument is a TensorList having the same length and shapes as the\nreturn value of XlaRecvTPUEmbeddingActivations, but contains gradients of the\nmodel's loss with respect to the embedding activations. The embedding tables are\nupdated from these gradients via the optimizer specified in the\nTPUEmbeddingConfiguration proto given to tpu.initialize_system.",
+    "attributes": [
+      {
+        "name": "NumTables",
+        "type": "int64",
+        "description": "number of tables",
+        "minimum": 1
+      },
+      {
+        "name": "NumLearningRateTags",
+        "type": "int64",
+        "description": "number of learning rate tags",
+        "minimum": 0,
+        "default": 0
+      },
+      {
+        "name": "config",
+        "type": "string",
+        "description": "Serialized TPUEmbeddingConfiguration proto."
+      },
+      {
+        "name": "embedding_partitions",
+        "type": "string",
+        "description": "Serialized EmbeddingPartitionsProto proto."
+      },
+      {
+        "name": "hbm_buffers_config",
+        "type": "string",
+        "description": "Serialized HbmBuffersConfig proto."
+      },
+      {
+        "name": "tpu_topology",
+        "type": "string",
+        "description": "Serialized TpuTopologyArgsProto proto."
+      }
+    ],
+    "inputs": [
+      {
+        "name": "gradients",
+        "description": "A TensorList of gradients with which to update embedding tables.",
+        "numberAttr": "NumTables",
+        "type": 1
+      },
+      {
+        "name": "learning_rates",
+        "description": "A TensorList of learning rates used for updating the embedding\ntables via the optimizer. The length of the TensorList must be equal to the\nnumber of dynamic learning rate tags specified in the\nTPUEmbeddingConfiguration proto.",
+        "numberAttr": "NumLearningRateTags",
+        "type": 1
+      },
+      {
+        "name": "deduplication_data",
+        "description": "A Tensor with type=DT_VARIANT containing the deduplication\ndata. The tensor is an XLA nested tuple containing N elements (where N is\nthe ratio of the number of embedding to tensor cores per TPU chip). Each\nelement of the nested tuple is a tuple of rank 1 tensors. Each tensor either\ncontains indices (DT_UINT32) for embedding lookup on the TensorCore or\nweights (DT_FLOAT) to apply to the output of the embedding lookup operation.",
+        "type": 21
+      }
+    ]
+  },
+  {
     "name": "XlaSendToHost",
     "summary": "An op to send a tensor to the host.",
     "description": "input: the tensor that will be sent to the host.\nTinput: element type for input.\nkey: A unique identifier for this region used to match up host transfers.",
@@ -63748,6 +64991,1339 @@
       {
         "name": "input",
         "typeAttr": "Tinput"
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseCoreAdagrad",
+    "attributes": [
+      {
+        "name": "feature_width",
+        "type": "int64"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "indices",
+        "type": 3
+      },
+      {
+        "name": "gradient",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "accumulator",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_accumulator",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseCoreAdagradMomentum",
+    "attributes": [
+      {
+        "name": "feature_width",
+        "type": "int64"
+      },
+      {
+        "name": "use_nesterov",
+        "type": "boolean"
+      },
+      {
+        "name": "beta_2",
+        "type": "float32"
+      },
+      {
+        "name": "exponent",
+        "type": "float32"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "indices",
+        "type": 3
+      },
+      {
+        "name": "gradient",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "beta_1",
+        "type": 1
+      },
+      {
+        "name": "epsilon",
+        "type": 1
+      },
+      {
+        "name": "accumulator",
+        "type": 1
+      },
+      {
+        "name": "momentum",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_accumulator",
+        "type": 1
+      },
+      {
+        "name": "updated_momentum",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseCoreAdam",
+    "attributes": [
+      {
+        "name": "feature_width",
+        "type": "int64"
+      },
+      {
+        "name": "use_sum_inside_sqrt",
+        "type": "boolean"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "indices",
+        "type": 3
+      },
+      {
+        "name": "gradient",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "momentum",
+        "type": 1
+      },
+      {
+        "name": "velocity",
+        "type": 1
+      },
+      {
+        "name": "beta_1",
+        "type": 1
+      },
+      {
+        "name": "beta_2",
+        "type": 1
+      },
+      {
+        "name": "epsilon",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_velocity",
+        "type": 1
+      },
+      {
+        "name": "updated_momentum",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseCoreFtrl",
+    "attributes": [
+      {
+        "name": "feature_width",
+        "type": "int64"
+      },
+      {
+        "name": "multiply_linear_by_learning_rate",
+        "type": "boolean"
+      },
+      {
+        "name": "l1_regularization_strength",
+        "type": "float32"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "accumulator",
+        "type": 1
+      },
+      {
+        "name": "linear",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "indices",
+        "type": 3
+      },
+      {
+        "name": "gradient",
+        "type": 1
+      },
+      {
+        "name": "beta",
+        "type": 1
+      },
+      {
+        "name": "learning_rate_power",
+        "type": 1
+      },
+      {
+        "name": "l2_regularization_strength",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_accumulator",
+        "type": 1
+      },
+      {
+        "name": "updated_linear",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseCoreSgd",
+    "attributes": [
+      {
+        "name": "feature_width",
+        "type": "int64"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "indices",
+        "type": 3
+      },
+      {
+        "name": "gradient",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmul",
+    "attributes": [
+      {
+        "name": "max_ids_per_partition",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "max_unique_ids_per_partition",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "input_size",
+        "type": "int64",
+        "minimum": 0
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_ids",
+        "type": 3
+      },
+      {
+        "name": "col_ids",
+        "type": 22
+      },
+      {
+        "name": "values",
+        "type": 1
+      },
+      {
+        "name": "offsets",
+        "type": 22
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "activations",
+        "type": 1
+      },
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_embedding_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulGradWithAdagradAndCsrInput",
+    "attributes": [
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "accumulator",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_accumulator",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulGradWithAdagradAndStaticBufferSize",
+    "attributes": [
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "max_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_unique_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "accumulator",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_accumulator",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulGradWithAdagradMomentumAndCsrInput",
+    "attributes": [
+      {
+        "name": "use_nesterov",
+        "type": "boolean"
+      },
+      {
+        "name": "exponent",
+        "type": "float32"
+      },
+      {
+        "name": "beta1",
+        "type": "float32"
+      },
+      {
+        "name": "beta2",
+        "type": "float32"
+      },
+      {
+        "name": "epsilon",
+        "type": "float32"
+      },
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "accumulator",
+        "type": 1
+      },
+      {
+        "name": "momenta",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_accumulator",
+        "type": 1
+      },
+      {
+        "name": "updated_momenta",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulGradWithAdagradMomentumAndStaticBufferSize",
+    "attributes": [
+      {
+        "name": "use_nesterov",
+        "type": "boolean"
+      },
+      {
+        "name": "exponent",
+        "type": "float32"
+      },
+      {
+        "name": "beta1",
+        "type": "float32"
+      },
+      {
+        "name": "beta2",
+        "type": "float32"
+      },
+      {
+        "name": "epsilon",
+        "type": "float32"
+      },
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "max_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_unique_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "accumulator",
+        "type": 1
+      },
+      {
+        "name": "momenta",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_accumulator",
+        "type": 1
+      },
+      {
+        "name": "updated_momenta",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulGradWithAdamAndCsrInput",
+    "attributes": [
+      {
+        "name": "use_sum_inside_sqrt",
+        "type": "boolean"
+      },
+      {
+        "name": "beta1",
+        "type": "float32"
+      },
+      {
+        "name": "beta2",
+        "type": "float32"
+      },
+      {
+        "name": "epsilon",
+        "type": "float32"
+      },
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "momenta",
+        "type": 1
+      },
+      {
+        "name": "velocity",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_momenta",
+        "type": 1
+      },
+      {
+        "name": "updated_velocity",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulGradWithAdamAndStaticBufferSize",
+    "attributes": [
+      {
+        "name": "use_sum_inside_sqrt",
+        "type": "boolean"
+      },
+      {
+        "name": "beta1",
+        "type": "float32"
+      },
+      {
+        "name": "beta2",
+        "type": "float32"
+      },
+      {
+        "name": "epsilon",
+        "type": "float32"
+      },
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "max_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_unique_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "momenta",
+        "type": 1
+      },
+      {
+        "name": "velocity",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_momenta",
+        "type": 1
+      },
+      {
+        "name": "updated_velocity",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulGradWithFtrlAndCsrInput",
+    "attributes": [
+      {
+        "name": "multiply_linear_by_learning_rate",
+        "type": "boolean"
+      },
+      {
+        "name": "beta",
+        "type": "float32"
+      },
+      {
+        "name": "learning_rate_power",
+        "type": "float32"
+      },
+      {
+        "name": "l1_regularization_strength",
+        "type": "float32"
+      },
+      {
+        "name": "l2_regularization_strength",
+        "type": "float32"
+      },
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "accumulator",
+        "type": 1
+      },
+      {
+        "name": "linear",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_accumulator",
+        "type": 1
+      },
+      {
+        "name": "updated_linear",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulGradWithFtrlAndStaticBufferSize",
+    "attributes": [
+      {
+        "name": "multiply_linear_by_learning_rate",
+        "type": "boolean"
+      },
+      {
+        "name": "beta",
+        "type": "float32"
+      },
+      {
+        "name": "learning_rate_power",
+        "type": "float32"
+      },
+      {
+        "name": "l1_regularization_strength",
+        "type": "float32"
+      },
+      {
+        "name": "l2_regularization_strength",
+        "type": "float32"
+      },
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "max_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_unique_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "accumulator",
+        "type": 1
+      },
+      {
+        "name": "linear",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      },
+      {
+        "name": "updated_accumulator",
+        "type": 1
+      },
+      {
+        "name": "updated_linear",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulGradWithSgdAndCsrInput",
+    "attributes": [
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulGradWithSgdAndStaticBufferSize",
+    "attributes": [
+      {
+        "name": "clip_weight_min",
+        "type": "float32",
+        "default": "-NaN"
+      },
+      {
+        "name": "clip_weight_max",
+        "type": "float32",
+        "default": "NaN"
+      },
+      {
+        "name": "max_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_unique_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "activation_gradients",
+        "type": 1
+      },
+      {
+        "name": "learning_rate",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "updated_embedding_table",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulWithCsrInput",
+    "attributes": [
+      {
+        "name": "input_size",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "quantization_config_low",
+        "type": "float32"
+      },
+      {
+        "name": "quantization_config_high",
+        "type": "float32"
+      },
+      {
+        "name": "quantization_config_num_buckets",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "activations",
+        "type": 1
+      }
+    ]
+  },
+  {
+    "name": "XlaSparseDenseMatmulWithStaticBufferSize",
+    "attributes": [
+      {
+        "name": "input_size",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "quantization_config_low",
+        "type": "float32"
+      },
+      {
+        "name": "quantization_config_high",
+        "type": "float32"
+      },
+      {
+        "name": "quantization_config_num_buckets",
+        "type": "int64",
+        "minimum": 0
+      },
+      {
+        "name": "max_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "max_unique_ids_per_sparse_core",
+        "type": "int64",
+        "minimum": 1
+      },
+      {
+        "name": "table_name",
+        "type": "string"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "row_pointers",
+        "type": 3
+      },
+      {
+        "name": "sorted_sample_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_token_ids",
+        "type": 3
+      },
+      {
+        "name": "sorted_gains",
+        "type": 1
+      },
+      {
+        "name": "embedding_table",
+        "type": 1
+      },
+      {
+        "name": "num_minibatches_per_physical_sparse_core",
+        "type": 3
+      }
+    ],
+    "outputs": [
+      {
+        "name": "activations",
+        "type": 1
       }
     ]
   },
@@ -63780,13 +66356,14 @@
     "inputs": [
       {
         "name": "input",
-        "description": "Input tensor to split across all dimensions.\n  }\n  out_arg {\n    name: \"outputs\"\n    description: <<END\nOutput slices based on input and num_splits defined, in row-major order.",
+        "description": "Input tensor to split across all dimensions.",
         "typeAttr": "T"
       }
     ],
     "outputs": [
       {
         "name": "outputs",
+        "description": "Output slices based on input and num_splits defined, in row-major order.",
         "numberAttr": "N",
         "typeAttr": "T"
       }

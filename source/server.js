@@ -1,7 +1,7 @@
 
 // Experimental
 
-var message = {};
+const message = {};
 
 message.ModelFactory = class {
 
@@ -12,17 +12,18 @@ message.ModelFactory = class {
             const content = String.fromCharCode.apply(null, buffer);
             const match = content.match(/^{\s*"signature":\s*"(.*)"\s*,\s*/);
             if (match && match[1].startsWith('netron:')) {
-                const obj = context.open('json');
+                const obj = context.peek('json');
                 if (obj && obj.signature && obj.signature.startsWith('netron:')) {
-                    return obj;
+                    context.type = 'message';
+                    context.target = obj;
                 }
             }
         }
         return null;
     }
 
-    async open(context, target) {
-        return new message.Model(target);
+    async open(context) {
+        return new message.Model(context.target);
     }
 };
 
@@ -126,7 +127,7 @@ message.Argument = class {
 message.Value = class {
 
     constructor(data) {
-        this._name= data.name || '';
+        this._name = data.name || '';
         this._type = data.type ? new message.TensorType(data.type) : null;
         this._initializer = data.initializer ? new message.Tensor(data.initializer) : null;
     }
@@ -230,14 +231,11 @@ message.TensorShape = class {
     }
 
     toString() {
-        return '[' + this._dimensions.toString() + ']';
+        return `[${this._dimensions}]`;
     }
 };
 
 message.Tensor = class {
-
-    constructor() {
-    }
 };
 
 message.Error = class extends Error {
@@ -247,6 +245,4 @@ message.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = message.ModelFactory;
-}
+export const ModelFactory = message.ModelFactory;

@@ -1,19 +1,19 @@
 
-var onednn = {};
+const onednn = {};
 
 onednn.ModelFactory = class {
 
     match(context) {
-        const obj = context.open('json');
+        const obj = context.peek('json');
         if (obj && obj.version && obj.engine_kind && obj.fpmath_mode && obj.graph) {
-            return obj;
+            context.type = 'onednn';
+            context.target = obj;
         }
-        return null;
     }
 
-    async open(context, target) {
+    async open(context) {
         const metadata = await context.metadata('onednn-metadata.json');
-        return new onednn.Model(metadata, target);
+        return new onednn.Model(metadata, context.target);
     }
 };
 
@@ -21,9 +21,9 @@ onednn.Model = class {
 
     constructor(metadata, symbol) {
         const version = symbol.version;
-        this._format = 'oneDNN Graph' + (version ? ' v' + version : '');
-        this._runtime = symbol.engine_kind + ' ' + symbol.fpmath_mode;
-        this._graphs = [ new onednn.Graph(metadata, symbol) ];
+        this._format = `oneDNN Graph${version ? ` v${version}` : ''}`;
+        this._runtime = `${symbol.engine_kind} ${symbol.fpmath_mode}`;
+        this._graphs = [new onednn.Graph(metadata, symbol)];
     }
 
     get format() {
@@ -53,7 +53,7 @@ onednn.Graph = class {
         const nodes = [];
         const tensors = new Set();
         for (const node of symbol.graph) {
-            if (node.kind == 'Wildcard' && node.inputs.length == 0) {
+            if (node.kind === 'Wildcard' && node.inputs.length === 0) {
                 for (const output of node.outputs) {
                     tensors.add(output.id);
                 }
@@ -70,7 +70,7 @@ onednn.Graph = class {
             if (!values.has(id)) {
                 values.set(id, new onednn.Value(id.toString(), type, tensor));
             } else if ((type && !type.equals(values.get(id).type)) || (tensor && !tensor.equals(values.get(id).initializer))) {
-                throw new onednn.Error("Duplicate value '" + id.toString() + "'.");
+                throw new onednn.Error(`Duplicate value '${id}'.`);
             }
             return values.get(id);
         };
@@ -91,7 +91,7 @@ onednn.Graph = class {
             const id = inputs[i];
             const value = values.get(id);
             if (value) {
-                this._inputs.push(new onednn.Argument(id.toString(), [ value ]));
+                this._inputs.push(new onednn.Argument(id.toString(), [value]));
             }
         }
         const outputs = symbol.output_ports || [];
@@ -99,7 +99,7 @@ onednn.Graph = class {
             const id = outputs[i];
             const value = values.get(id);
             if (value) {
-                this._outputs.push(new onednn.Argument(id.toString(), [ value ]));
+                this._outputs.push(new onednn.Argument(id.toString(), [value]));
             }
         }
     }
@@ -137,9 +137,7 @@ onednn.Node = class {
         this._location = node.id;
         const attrs = node.attrs;
         if (attrs) {
-            for (const entry of Object.entries(attrs)) {
-                const name = entry[0];
-                const value = entry[1];
+            for (const [name, value] of Object.entries(attrs)) {
                 this._attributes.push(new onednn.Attribute(name, value.type, value.value));
             }
         }
@@ -149,7 +147,7 @@ onednn.Node = class {
             if (this._type && this._type.inputs && this._type.inputs.length > 0) {
                 name = this._type.inputs[i].name;
             }
-            this._inputs.push(new onednn.Argument(name, [ value(inputs[i]) ]));
+            this._inputs.push(new onednn.Argument(name, [value(inputs[i])]));
         }
         const outputs = node.outputs || [];
         for (let i = 0; i < outputs.length; i++) {
@@ -157,7 +155,7 @@ onednn.Node = class {
             if (this._type && this._type.outputs && this._type.outputs.length > 0) {
                 name = this._type.outputs[i].name;
             }
-            this._outputs.push(new onednn.Argument(name, [ value(outputs[i]) ]));
+            this._outputs.push(new onednn.Argument(name, [value(outputs[i])]));
         }
     }
 
@@ -195,21 +193,21 @@ onednn.Attribute = class {
     constructor(name, type, value) {
         this._name = name;
         this._value = value;
-        let number;
         switch (type) {
             case 'bool':
                 this._type = 'boolean';
                 switch (value) {
                     case 1: this._value = true; break;
                     case 0: this._value = false; break;
-                    default: throw new onednn.Error("Unsupported attribute boolean value '" + value + "'.");
+                    default: throw new onednn.Error(`Unsupported attribute boolean value '${value}'.`);
                 }
                 break;
-            case 's64':
+            case 's64': {
                 this._type = 'int64';
-                number = Number.parseInt(this._value, 10);
+                const number = Number.parseInt(this._value, 10);
                 this._value = Number.isNaN(this._value - number) ? value : number;
                 break;
+            }
             case 's64[]':
                 this._type = 'int64[]';
                 if (this._value.length > 2 && this._value.toString().startsWith('[') && this._value.toString().endsWith(']')) {
@@ -218,23 +216,24 @@ onednn.Attribute = class {
                         .map((item) => item.trim())
                         .map((item) => item.endsWith('L') ? item.substring(0, item.length - 1) : item);
                     for (const item of items) {
-                        number = Number.parseInt(item, 10);
-                        if (Number.isNaN(item - number)) {
+                        const value = Number.parseInt(item, 10);
+                        if (Number.isNaN(item - value)) {
                             array = null;
-                        } else if (array != null) {
-                            array.push(number);
+                        } else if (array !== null) {
+                            array.push(value);
                         }
                     }
-                    if (array != null) {
+                    if (array !== null) {
                         this._value = array;
                     }
                 }
                 break;
-            case 'f32':
+            case 'f32': {
                 this._type = 'float32';
-                number = Number.parseFloat(this._value);
+                const number = Number.parseFloat(this._value);
                 this._value = Number.isNaN(this._value - number) ? value : number;
                 break;
+            }
             case 'f32[]':
                 this._type = 'float32[]';
                 if (this._value.length > 2 && this._value.toString().startsWith('[') && this._value.toString().endsWith(']')) {
@@ -243,14 +242,14 @@ onednn.Attribute = class {
                         .map((item) => item.trim())
                         .map((item) => item.endsWith('L') ? item.substring(0, item.length - 1) : item);
                     for (const item of items) {
-                        number = Number.parseFloat(item);
-                        if (Number.isNaN(item - number)) {
+                        const value = Number.parseFloat(item);
+                        if (Number.isNaN(item - value)) {
                             array = null;
-                        } else if (array != null) {
-                            array.push(number);
+                        } else if (array !== null) {
+                            array.push(value);
                         }
                     }
-                    if (array != null) {
+                    if (array !== null) {
                         this._value = array;
                     }
                 }
@@ -259,7 +258,7 @@ onednn.Attribute = class {
                 this._type = 'string';
                 break;
             default: {
-                throw new onednn.Error("Unsupported attribute array data type '" + type + "'.");
+                throw new onednn.Error(`Unsupported attribute array data type '${type}'.`);
             }
         }
     }
@@ -277,7 +276,7 @@ onednn.Attribute = class {
     }
 
     get visible() {
-        return this._visible == false ? false : true;
+        return this._visible !== false;
     }
 };
 
@@ -301,7 +300,7 @@ onednn.Value = class {
 
     constructor(name, type, initializer) {
         if (typeof name !== 'string') {
-            throw new onednn.Error("Invalid value identifier '" + JSON.stringify(name) + "'.");
+            throw new onednn.Error(`Invalid value identifier '${JSON.stringify(name)}'.`);
         }
         this._name = name;
         this._type = type || null;
@@ -325,6 +324,8 @@ onednn.TensorType = class {
 
     constructor(dataType, shape) {
         switch (dataType) {
+            case 'f8_e4m3': this._dataType = 'float8e4m3'; break;
+            case 'f8_e5m2': this._dataType = 'float8e5m2'; break;
             case 'f16': this._dataType = 'float16'; break;
             case 'f32': this._dataType = 'float32'; break;
             case 's8': this._dataType = 'int8'; break;
@@ -333,7 +334,7 @@ onednn.TensorType = class {
             case 'bf16': this._dataType = 'bfloat16'; break;
             case 'boolean': this._dataType = 'boolean'; break;
             case 'undef': this._dataType = '?'; break;
-            default: throw new onednn.Error("Unsupported tensor data type '" + dataType.toString() + "'.");
+            default: throw new onednn.Error(`Unsupported tensor data type '${dataType}'.`);
         }
         this._shape = shape;
     }
@@ -373,7 +374,7 @@ onednn.TensorShape = class {
     }
 
     toString() {
-        return this._dimensions ? ('[' + this._dimensions.map((dimension) => dimension ? dimension.toString() : '?').join(',') + ']') : '';
+        return this._dimensions ? (`[${this._dimensions.map((dimension) => dimension ? dimension.toString() : '?').join(',')}]`) : '';
     }
 };
 
@@ -405,6 +406,5 @@ onednn.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = onednn.ModelFactory;
-}
+export const ModelFactory = onednn.ModelFactory;
+

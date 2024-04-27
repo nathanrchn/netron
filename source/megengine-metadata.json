@@ -809,7 +809,7 @@
       { "name": "drop_prob" },
       { "name": "training" }
     ],
-    "category": "Layer"
+    "category": "Dropout"
   },
   {
     "name": "megengine.functional.nn.embedding",
@@ -820,7 +820,7 @@
       { "name": "max_norm" },
       { "name": "norm_type" }
     ],
-    "category": "Layer"
+    "category": "Transform"
   },
   {
     "name": "megengine.functional.nn.gelu",
@@ -1363,7 +1363,7 @@
       { "name": "inp" },
       { "name": "pattern" }
     ],
-    "category": "Shape"
+    "category": "Transform"
   },
   {
     "name": "megengine.functional.tensor.swapaxes",
@@ -1913,8 +1913,7 @@
     "attributes": [
       { "name": "self" },
       { "name": "index" }
-    ],
-    "category": "Tensor"
+    ]
   },
   {
     "name": "__setitem__",
@@ -1922,8 +1921,7 @@
       { "name": "self" },
       { "name": "index" },
       { "name": "value" }
-    ],
-    "category": "Tensor"
+    ]
   },
   {
     "name": "megengine.module.adaptive_pooling.AdaptiveAvgPool2d",
@@ -1999,7 +1997,7 @@
   },
   {
     "name": "megengine.module.dropout.Dropout",
-    "category": "Layer"
+    "category": "Dropout"
   },
   {
     "name": "megengine.module.elemwise.Elemwise"
@@ -2470,6 +2468,10 @@
       { "name": "window_w", "type": "uint32", "default": 2 },
       { "name": "format", "type": "ConvolutionV0Format", "default": "NCHW" }
     ]
+  },
+  {
+    "name": "PoolingV1",
+    "category": "Pool"
   },
   {
     "name": "Pooling",
@@ -3375,7 +3377,7 @@
     "name": "PersistentDTypeScalar",
     "attributes": [
       { "name": "dtype", "type": "DTypeEnum", "default": "Float32" },
-      { "name": "storage", "type": "uint8", "default": 0 }
+      { "name": "storage", "type": "uint8[]", "default": 0 }
     ]
   },
   {
@@ -3399,7 +3401,7 @@
     "name": "Dimshuffle",
     "category": "Shape",
     "attributes": [
-      { "name": "pattern", "type": "int32", "default": 0 },
+      { "name": "pattern", "type": "int32[]", "default": 0 },
       { "name": "ndim", "type": "uint32", "default": 0 }
     ]
   },
@@ -3413,7 +3415,7 @@
   {
     "name": "AxisAddRemove",
     "attributes": [
-      { "name": "desc", "type": "AxisDesc" }
+      { "name": "desc", "type": "AxisDesc[]" }
     ]
   },
   {
@@ -3437,7 +3439,7 @@
   {
     "name": "IndexDescMaskDump",
     "attributes": [
-      { "name": "items", "type": "IndexDescMaskItem" }
+      { "name": "items", "type": "IndexDescMaskItem[]" }
     ]
   },
   {
@@ -3478,7 +3480,6 @@
   },
   {
     "name": "Subtensor",
-    "category": "Tensor",
     "inputs": [
       { "name": "input" },
       { "name": "axis" }
@@ -3486,6 +3487,10 @@
   },
   {
     "name": "GetVarShape",
+    "category": "Shape"
+  },
+  {
+    "name": "GetVarShapeV1",
     "category": "Shape"
   },
   {
@@ -3521,6 +3526,14 @@
       { "name": "eps", "type": "float32", "default": 0.00001 },
       { "name": "group", "type": "uint32", "default": 1 },
       { "name": "format", "type": "ConvolutionFormat", "default": "NCHW" }
+    ]
+  },
+  {
+    "name": "MultinomialRNG",
+    "attributes": [
+      { "name": "seed", "type": "uint64", "default": 0 },
+      { "name": "num_samples", "type": "uint64", "default": 1 },
+      { "name": "replacement", "type": "bool", "default": false }
     ]
   }
 ]

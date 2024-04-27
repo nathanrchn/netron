@@ -192,7 +192,7 @@
   },
   {
     "name": "sklearn.calibration.CalibratedClassifierCV",
-    "description": "Probability calibration with isotonic regression or logistic regression.\n\nThis class uses cross-validation to both estimate the parameters of a\nclassifier and subsequently calibrate a classifier. With default\n`ensemble=True`, for each cv split it\nfits a copy of the base estimator to the training subset, and calibrates it\nusing the testing subset. For prediction, predicted probabilities are\naveraged across these individual calibrated classifiers. When\n`ensemble=False`, cross-validation is used to obtain unbiased predictions,\nvia :func:`~sklearn.model_selection.cross_val_predict`, which are then\nused for calibration. For prediction, the base estimator, trained using all\nthe data, is used. This is the method implemented when `probabilities=True`\nfor :mod:`sklearn.svm` estimators.\n\nAlready fitted classifiers can be calibrated via the parameter\n`cv=\"prefit\"`. In this case, no cross-validation is used and all provided\ndata is used for calibration. The user has to take care manually that data\nfor model fitting and calibration are disjoint.\n\nThe calibration is based on the :term:`decision_function` method of the\n`estimator` if it exists, else on :term:`predict_proba`.\n\nRead more in the :ref:`User Guide <calibration>`.\n",
+    "description": "Probability calibration with isotonic regression or logistic regression.\n\nThis class uses cross-validation to both estimate the parameters of a\nclassifier and subsequently calibrate a classifier. With default\n`ensemble=True`, for each cv split it\nfits a copy of the base estimator to the training subset, and calibrates it\nusing the testing subset. For prediction, predicted probabilities are\naveraged across these individual calibrated classifiers. When\n`ensemble=False`, cross-validation is used to obtain unbiased predictions,\nvia :func:`~sklearn.model_selection.cross_val_predict`, which are then\nused for calibration. For prediction, the base estimator, trained using all\nthe data, is used. This is the prediction method implemented when\n`probabilities=True` for :class:`~sklearn.svm.SVC` and :class:`~sklearn.svm.NuSVC`\nestimators (see :ref:`User Guide <scores_probabilities>` for details).\n\nAlready fitted classifiers can be calibrated via the parameter\n`cv=\"prefit\"`. In this case, no cross-validation is used and all provided\ndata is used for calibration. The user has to take care manually that data\nfor model fitting and calibration are disjoint.\n\nThe calibration is based on the :term:`decision_function` method of the\n`estimator` if it exists, else on :term:`predict_proba`.\n\nRead more in the :ref:`User Guide <calibration>`.\n",
     "attributes": [
       {
         "default": null,
@@ -274,7 +274,7 @@
       },
       {
         "name": "verbose_feature_names_out",
-        "description": "If True, :meth:`get_feature_names_out` will prefix all feature names\nwith the name of the transformer that generated that feature.\nIf False, :meth:`get_feature_names_out` will not prefix any feature\nnames and will error if feature names are not unique.\n\n.. versionadded:: 1.0\n",
+        "description": "If True, :meth:`ColumnTransformer.get_feature_names_out` will prefix\nall feature names with the name of the transformer that generated that\nfeature.\nIf False, :meth:`ColumnTransformer.get_feature_names_out` will not\nprefix any feature names and will error if feature names are not\nunique.\n\n.. versionadded:: 1.0\n",
         "type": "boolean",
         "default": true
       }
@@ -282,7 +282,7 @@
   },
   {
     "name": "sklearn.decomposition._pca.PCA",
-    "description": "Principal component analysis (PCA).\n\nLinear dimensionality reduction using Singular Value Decomposition of the\ndata to project it to a lower dimensional space. The input data is centered\nbut not scaled for each feature before applying the SVD.\n\nIt uses the LAPACK implementation of the full SVD or a randomized truncated\nSVD by the method of Halko et al. 2009, depending on the shape of the input\ndata and the number of components to extract.\n\nIt can also use the scipy.sparse.linalg ARPACK implementation of the\ntruncated SVD.\n\nNotice that this class does not support sparse input. See\n:class:`TruncatedSVD` for an alternative with sparse data.\n\nRead more in the :ref:`User Guide <PCA>`.\n",
+    "description": "Principal component analysis (PCA).\n\nLinear dimensionality reduction using Singular Value Decomposition of the\ndata to project it to a lower dimensional space. The input data is centered\nbut not scaled for each feature before applying the SVD.\n\nIt uses the LAPACK implementation of the full SVD or a randomized truncated\nSVD by the method of Halko et al. 2009, depending on the shape of the input\ndata and the number of components to extract.\n\nIt can also use the scipy.sparse.linalg ARPACK implementation of the\ntruncated SVD.\n\nNotice that this class does not support sparse input. See\n:class:`TruncatedSVD` for an alternative with sparse data.\n\nFor a usage example, see\n:ref:`sphx_glr_auto_examples_decomposition_plot_pca_iris.py`\n\nRead more in the :ref:`User Guide <PCA>`.\n",
     "attributes": [
       {
         "default": null,
@@ -390,7 +390,7 @@
   },
   {
     "name": "sklearn.decomposition.PCA",
-    "description": "Principal component analysis (PCA).\n\nLinear dimensionality reduction using Singular Value Decomposition of the\ndata to project it to a lower dimensional space. The input data is centered\nbut not scaled for each feature before applying the SVD.\n\nIt uses the LAPACK implementation of the full SVD or a randomized truncated\nSVD by the method of Halko et al. 2009, depending on the shape of the input\ndata and the number of components to extract.\n\nIt can also use the scipy.sparse.linalg ARPACK implementation of the\ntruncated SVD.\n\nNotice that this class does not support sparse input. See\n:class:`TruncatedSVD` for an alternative with sparse data.\n\nRead more in the :ref:`User Guide <PCA>`.\n",
+    "description": "Principal component analysis (PCA).\n\nLinear dimensionality reduction using Singular Value Decomposition of the\ndata to project it to a lower dimensional space. The input data is centered\nbut not scaled for each feature before applying the SVD.\n\nIt uses the LAPACK implementation of the full SVD or a randomized truncated\nSVD by the method of Halko et al. 2009, depending on the shape of the input\ndata and the number of components to extract.\n\nIt can also use the scipy.sparse.linalg ARPACK implementation of the\ntruncated SVD.\n\nNotice that this class does not support sparse input. See\n:class:`TruncatedSVD` for an alternative with sparse data.\n\nFor a usage example, see\n:ref:`sphx_glr_auto_examples_decomposition_plot_pca_iris.py`\n\nRead more in the :ref:`User Guide <PCA>`.\n",
     "attributes": [
       {
         "default": null,
@@ -753,7 +753,7 @@
   },
   {
     "name": "sklearn.feature_extraction.text.CountVectorizer",
-    "description": "Convert a collection of text documents to a matrix of token counts.\n\nThis implementation produces a sparse representation of the counts using\nscipy.sparse.csr_matrix.\n\nIf you do not provide an a-priori dictionary and you do not use an analyzer\nthat does some kind of feature selection then the number of features will\nbe equal to the vocabulary size found by analyzing the data.\n\nRead more in the :ref:`User Guide <text_feature_extraction>`.\n",
+    "description": "Convert a collection of text documents to a matrix of token counts.\n\nThis implementation produces a sparse representation of the counts using\nscipy.sparse.csr_matrix.\n\nIf you do not provide an a-priori dictionary and you do not use an analyzer\nthat does some kind of feature selection then the number of features will\nbe equal to the vocabulary size found by analyzing the data.\n\nFor an efficiency comparison of the different feature extractors, see\n:ref:`sphx_glr_auto_examples_text_plot_hashing_vs_dict_vectorizer.py`.\n\nRead more in the :ref:`User Guide <text_feature_extraction>`.\n",
     "attributes": [
       {
         "default": "content",
@@ -774,7 +774,7 @@
       },
       {
         "default": null,
-        "description": "Remove accents and perform other character normalization\nduring the preprocessing step.\n'ascii' is a fast method that only works on characters that have\na direct ASCII mapping.\n'unicode' is a slightly slower method that works on any characters.\nNone (default) does nothing.\n\nBoth 'ascii' and 'unicode' use NFKD normalization from\n:func:`unicodedata.normalize`.\n",
+        "description": "Remove accents and perform other character normalization\nduring the preprocessing step.\n'ascii' is a fast method that only works on characters that have\na direct ASCII mapping.\n'unicode' is a slightly slower method that works on any characters.\nNone (default) means no character normalization is performed.\n\nBoth 'ascii' and 'unicode' use NFKD normalization from\n:func:`unicodedata.normalize`.\n",
         "name": "strip_accents"
       },
       {
@@ -854,7 +854,7 @@
   },
   {
     "name": "sklearn.feature_extraction.text.TfidfVectorizer",
-    "description": "Convert a collection of raw documents to a matrix of TF-IDF features.\n\nEquivalent to :class:`CountVectorizer` followed by\n:class:`TfidfTransformer`.\n\nRead more in the :ref:`User Guide <text_feature_extraction>`.\n",
+    "description": "Convert a collection of raw documents to a matrix of TF-IDF features.\n\nEquivalent to :class:`CountVectorizer` followed by\n:class:`TfidfTransformer`.\n\nFor an example of usage, see\n:ref:`sphx_glr_auto_examples_text_plot_document_classification_20newsgroups.py`.\n\nFor an efficiency comparison of the different feature extractors, see\n:ref:`sphx_glr_auto_examples_text_plot_hashing_vs_dict_vectorizer.py`.\n\nRead more in the :ref:`User Guide <text_feature_extraction>`.\n",
     "attributes": [
       {
         "default": "content",
@@ -875,7 +875,7 @@
       },
       {
         "default": null,
-        "description": "Remove accents and perform other character normalization\nduring the preprocessing step.\n'ascii' is a fast method that only works on characters that have\na direct ASCII mapping.\n'unicode' is a slightly slower method that works on any characters.\nNone (default) does nothing.\n\nBoth 'ascii' and 'unicode' use NFKD normalization from\n:func:`unicodedata.normalize`.\n",
+        "description": "Remove accents and perform other character normalization\nduring the preprocessing step.\n'ascii' is a fast method that only works on characters that have\na direct ASCII mapping.\n'unicode' is a slightly slower method that works on any characters.\nNone (default) means no character normalization is performed.\n\nBoth 'ascii' and 'unicode' use NFKD normalization from\n:func:`unicodedata.normalize`.\n",
         "name": "strip_accents"
       },
       {
@@ -939,7 +939,7 @@
       },
       {
         "default": false,
-        "description": "If True, all non-zero term counts are set to 1. This does not mean\noutputs will have only 0/1 values, only that the tf term in tf-idf\nis binary. (Set idf and normalization to False to get 0/1 outputs).\n",
+        "description": "If True, all non-zero term counts are set to 1. This does not mean\noutputs will have only 0/1 values, only that the tf term in tf-idf\nis binary. (Set `binary` to True, `use_idf` to False and\n`norm` to None to get 0/1 outputs).\n",
         "name": "binary",
         "type": "boolean"
       },
@@ -951,7 +951,7 @@
       },
       {
         "default": "l2",
-        "description": "Each output row will have unit norm, either:\n\n- 'l2': Sum of squares of vector elements is 1. The cosine\nsimilarity between two vectors is their dot product when l2 norm has\nbeen applied.\n- 'l1': Sum of absolute values of vector elements is 1.\nSee :func:`preprocessing.normalize`.\n- None: No normalization.\n",
+        "description": "Each output row will have unit norm, either:\n\n- 'l2': Sum of squares of vector elements is 1. The cosine\nsimilarity between two vectors is their dot product when l2 norm has\nbeen applied.\n- 'l1': Sum of absolute values of vector elements is 1.\nSee :func:`~sklearn.preprocessing.normalize`.\n- None: No normalization.\n",
         "name": "norm"
       },
       {
@@ -1042,12 +1042,12 @@
     "attributes": [
       {
         "default": "l2",
-        "description": "Specify the norm of the penalty:\n\n- `None`: no penalty is added;\n- `'l2'`: add a L2 penalty term and it is the default choice;\n- `'l1'`: add a L1 penalty term;\n- `'elasticnet'`: both L1 and L2 penalty terms are added.\n\n.. warning::\nSome penalties may not work with some solvers. See the parameter\n`solver` below, to know the compatibility between the penalty and\nsolver.\n\n.. versionadded:: 0.19\nl1 penalty with SAGA solver (allowing 'multinomial' + L1)\n\n.. deprecated:: 1.2\nThe 'none' option was deprecated in version 1.2, and will be removed\nin 1.4. Use `None` instead.\n",
+        "description": "Specify the norm of the penalty:\n\n- `None`: no penalty is added;\n- `'l2'`: add a L2 penalty term and it is the default choice;\n- `'l1'`: add a L1 penalty term;\n- `'elasticnet'`: both L1 and L2 penalty terms are added.\n\n.. warning::\nSome penalties may not work with some solvers. See the parameter\n`solver` below, to know the compatibility between the penalty and\nsolver.\n\n.. versionadded:: 0.19\nl1 penalty with SAGA solver (allowing 'multinomial' + L1)\n",
         "name": "penalty"
       },
       {
         "default": false,
-        "description": "Dual or primal formulation. Dual formulation is only implemented for\nl2 penalty with liblinear solver. Prefer dual=False when\nn_samples > n_features.\n",
+        "description": "Dual (constrained) or primal (regularized, see also\n:ref:`this equation <regularized-logistic-loss>`) formulation. Dual formulation\nis only implemented for l2 penalty with liblinear solver. Prefer dual=False when\nn_samples > n_features.\n",
         "name": "dual",
         "type": "boolean"
       },
@@ -1256,13 +1256,13 @@
     "attributes": [
       {
         "default": "l2",
-        "description": "Specify the norm of the penalty:\n\n- `None`: no penalty is added;\n- `'l2'`: add a L2 penalty term and it is the default choice;\n- `'l1'`: add a L1 penalty term;\n- `'elasticnet'`: both L1 and L2 penalty terms are added.\n\n.. warning::\nSome penalties may not work with some solvers. See the parameter\n`solver` below, to know the compatibility between the penalty and\nsolver.\n\n.. versionadded:: 0.19\nl1 penalty with SAGA solver (allowing 'multinomial' + L1)\n\n.. deprecated:: 1.2\nThe 'none' option was deprecated in version 1.2, and will be removed\nin 1.4. Use `None` instead.\n",
+        "description": "Specify the norm of the penalty:\n\n- `None`: no penalty is added;\n- `'l2'`: add a L2 penalty term and it is the default choice;\n- `'l1'`: add a L1 penalty term;\n- `'elasticnet'`: both L1 and L2 penalty terms are added.\n\n.. warning::\nSome penalties may not work with some solvers. See the parameter\n`solver` below, to know the compatibility between the penalty and\nsolver.\n\n.. versionadded:: 0.19\nl1 penalty with SAGA solver (allowing 'multinomial' + L1)\n",
         "name": "penalty",
         "optional": true
       },
       {
         "default": false,
-        "description": "Dual or primal formulation. Dual formulation is only implemented for\nl2 penalty with liblinear solver. Prefer dual=False when\nn_samples > n_features.\n",
+        "description": "Dual (constrained) or primal (regularized, see also\n:ref:`this equation <regularized-logistic-loss>`) formulation. Dual formulation\nis only implemented for l2 penalty with liblinear solver. Prefer dual=False when\nn_samples > n_features.\n",
         "name": "dual",
         "optional": true,
         "type": "boolean"
@@ -1453,9 +1453,9 @@
       },
       {
         "name": "force_alpha",
-        "description": "If False and alpha is less than 1e-10, it will set alpha to\n1e-10. If True, alpha will remain unchanged. This may cause\nnumerical errors if alpha is too close to 0.\n\n.. versionadded:: 1.2\n.. deprecated:: 1.2\nThe default value of `force_alpha` will change to `True` in v1.4.\n",
+        "description": "If False and alpha is less than 1e-10, it will set alpha to\n1e-10. If True, alpha will remain unchanged. This may cause\nnumerical errors if alpha is too close to 0.\n\n.. versionadded:: 1.2\n.. versionchanged:: 1.4\nThe default value of `force_alpha` changed to `True`.\n",
         "type": "boolean",
-        "default": false
+        "default": true
       }
     ]
   },
@@ -1492,9 +1492,9 @@
       },
       {
         "name": "force_alpha",
-        "description": "If False and alpha is less than 1e-10, it will set alpha to\n1e-10. If True, alpha will remain unchanged. This may cause\nnumerical errors if alpha is too close to 0.\n\n.. versionadded:: 1.2\n.. deprecated:: 1.2\nThe default value of `force_alpha` will change to `True` in v1.4.\n",
+        "description": "If False and alpha is less than 1e-10, it will set alpha to\n1e-10. If True, alpha will remain unchanged. This may cause\nnumerical errors if alpha is too close to 0.\n\n.. versionadded:: 1.2\n.. versionchanged:: 1.4\nThe default value of `force_alpha` changed to `True`.\n",
         "type": "boolean",
-        "default": false
+        "default": true
       }
     ]
   },
@@ -1524,9 +1524,9 @@
       },
       {
         "name": "force_alpha",
-        "description": "If False and alpha is less than 1e-10, it will set alpha to\n1e-10. If True, alpha will remain unchanged. This may cause\nnumerical errors if alpha is too close to 0.\n\n.. versionadded:: 1.2\n.. deprecated:: 1.2\nThe default value of `force_alpha` will change to `True` in v1.4.\n",
+        "description": "If False and alpha is less than 1e-10, it will set alpha to\n1e-10. If True, alpha will remain unchanged. This may cause\nnumerical errors if alpha is too close to 0.\n\n.. versionadded:: 1.2\n.. versionchanged:: 1.4\nThe default value of `force_alpha` changed to `True`.\n",
         "type": "boolean",
-        "default": false
+        "default": true
       }
     ]
   },
@@ -1543,7 +1543,7 @@
       },
       {
         "default": "uniform",
-        "description": "Weight function used in prediction.  Possible values:\n\n- 'uniform' : uniform weights.  All points in each neighborhood\nare weighted equally.\n- 'distance' : weight points by the inverse of their distance.\nin this case, closer neighbors of a query point will have a\ngreater influence than neighbors which are further away.\n- [callable] : a user-defined function which accepts an\narray of distances, and returns an array of the same shape\ncontaining the weights.\n",
+        "description": "Weight function used in prediction.  Possible values:\n\n- 'uniform' : uniform weights.  All points in each neighborhood\nare weighted equally.\n- 'distance' : weight points by the inverse of their distance.\nin this case, closer neighbors of a query point will have a\ngreater influence than neighbors which are further away.\n- [callable] : a user-defined function which accepts an\narray of distances, and returns an array of the same shape\ncontaining the weights.\n\nRefer to the example entitled\n:ref:`sphx_glr_auto_examples_neighbors_plot_classification.py`\nshowing the impact of the `weights` parameter on the decision\nboundary.\n",
         "name": "weights",
         "optional": true
       },
@@ -1561,8 +1561,8 @@
         "type": "int32"
       },
       {
-        "default": 2,
-        "description": "Power parameter for the Minkowski metric. When p = 1, this is\nequivalent to using manhattan_distance (l1), and euclidean_distance\n(l2) for p = 2. For arbitrary p, minkowski_distance (l_p) is used.\n",
+        "default": 2.0,
+        "description": "Power parameter for the Minkowski metric. When p = 1, this is equivalent\nto using manhattan_distance (l1), and euclidean_distance (l2) for p = 2.\nFor arbitrary p, minkowski_distance (l_p) is used. This parameter is expected\nto be positive.\n",
         "name": "p",
         "optional": true,
         "type": "int32"
@@ -1617,7 +1617,7 @@
         "type": "int32"
       },
       {
-        "default": 2,
+        "default": 2.0,
         "description": "Power parameter for the Minkowski metric. When p = 1, this is\nequivalent to using manhattan_distance (l1), and euclidean_distance\n(l2) for p = 2. For arbitrary p, minkowski_distance (l_p) is used.\n",
         "name": "p",
         "optional": true,
@@ -1625,7 +1625,7 @@
       },
       {
         "default": "minkowski",
-        "description": "Metric to use for distance computation. Default is \"minkowski\", which\nresults in the standard Euclidean distance when p = 2. See the\ndocumentation of `scipy.spatial.distance\n<https://docs.scipy.org/doc/scipy/reference/spatial.distance.html>`_ and\nthe metrics listed in\n:class:`~sklearn.metrics.pairwise.distance_metrics` for valid metric\nvalues.\n\nIf metric is \"precomputed\", X is assumed to be a distance matrix and\nmust be square during fit. X may be a :term:`sparse graph`, in which\ncase only \"nonzero\" elements may be considered neighbors.\n\nIf metric is a callable function, it takes two arrays representing 1D\nvectors as inputs and must return one value indicating the distance\nbetween those vectors. This works for Scipy's metrics, but is less\nefficient than passing the metric name as a string.\n",
+        "description": "Metric to use for distance computation. Default is \"minkowski\", which\nresults in the standard Euclidean distance when p = 2. See the\ndocumentation of `scipy.spatial.distance\n<https://docs.scipy.org/doc/scipy/reference/spatial.distance.html>`_ and\nthe metrics listed in\n:class:`~sklearn.metrics.pairwise.distance_metrics` for valid metric\nvalues.\n\nIf metric is \"precomputed\", X is assumed to be a distance matrix and\nmust be square during fit. X may be a :term:`sparse graph`, in which\ncase only \"nonzero\" elements may be considered neighbors.\n\nIf metric is a callable function, it takes two arrays representing 1D\nvectors as inputs and must return one value indicating the distance\nbetween those vectors. This works for Scipy's metrics, but is less\nefficient than passing the metric name as a string.\n\nIf metric is a DistanceMetric object, it will be passed directly to\nthe underlying computation routines.\n",
         "name": "metric"
       },
       {
@@ -1810,7 +1810,7 @@
   },
   {
     "name": "sklearn.preprocessing._data.StandardScaler",
-    "description": "Standardize features by removing the mean and scaling to unit variance.\n\nThe standard score of a sample `x` is calculated as:\n\nz = (x - u) / s\n\nwhere `u` is the mean of the training samples or zero if `with_mean=False`,\nand `s` is the standard deviation of the training samples or one if\n`with_std=False`.\n\nCentering and scaling happen independently on each feature by computing\nthe relevant statistics on the samples in the training set. Mean and\nstandard deviation are then stored to be used on later data using\n:meth:`transform`.\n\nStandardization of a dataset is a common requirement for many\nmachine learning estimators: they might behave badly if the\nindividual features do not more or less look like standard normally\ndistributed data (e.g. Gaussian with 0 mean and unit variance).\n\nFor instance many elements used in the objective function of\na learning algorithm (such as the RBF kernel of Support Vector\nMachines or the L1 and L2 regularizers of linear models) assume that\nall features are centered around 0 and have variance in the same\norder. If a feature has a variance that is orders of magnitude larger\nthan others, it might dominate the objective function and make the\nestimator unable to learn from other features correctly as expected.\n\nThis scaler can also be applied to sparse CSR or CSC matrices by passing\n`with_mean=False` to avoid breaking the sparsity structure of the data.\n\nRead more in the :ref:`User Guide <preprocessing_scaler>`.\n",
+    "description": "Standardize features by removing the mean and scaling to unit variance.\n\nThe standard score of a sample `x` is calculated as:\n\nz = (x - u) / s\n\nwhere `u` is the mean of the training samples or zero if `with_mean=False`,\nand `s` is the standard deviation of the training samples or one if\n`with_std=False`.\n\nCentering and scaling happen independently on each feature by computing\nthe relevant statistics on the samples in the training set. Mean and\nstandard deviation are then stored to be used on later data using\n:meth:`transform`.\n\nStandardization of a dataset is a common requirement for many\nmachine learning estimators: they might behave badly if the\nindividual features do not more or less look like standard normally\ndistributed data (e.g. Gaussian with 0 mean and unit variance).\n\nFor instance many elements used in the objective function of\na learning algorithm (such as the RBF kernel of Support Vector\nMachines or the L1 and L2 regularizers of linear models) assume that\nall features are centered around 0 and have variance in the same\norder. If a feature has a variance that is orders of magnitude larger\nthan others, it might dominate the objective function and make the\nestimator unable to learn from other features correctly as expected.\n\n`StandardScaler` is sensitive to outliers, and the features may scale\ndifferently from each other in the presence of outliers. For an example\nvisualization, refer to :ref:`Compare StandardScaler with other scalers\n<plot_all_scaling_standard_scaler_section>`.\n\nThis scaler can also be applied to sparse CSR or CSC matrices by passing\n`with_mean=False` to avoid breaking the sparsity structure of the data.\n\nRead more in the :ref:`User Guide <preprocessing_scaler>`.\n",
     "attributes": [
       {
         "default": true,
@@ -1835,7 +1835,7 @@
   },
   {
     "name": "sklearn.preprocessing._encoders.OneHotEncoder",
-    "description": "\nEncode categorical features as a one-hot numeric array.\n\nThe input to this transformer should be an array-like of integers or\nstrings, denoting the values taken on by categorical (discrete) features.\nThe features are encoded using a one-hot (aka 'one-of-K' or 'dummy')\nencoding scheme. This creates a binary column for each category and\nreturns a sparse matrix or dense array (depending on the ``sparse_output``\nparameter)\n\nBy default, the encoder derives the categories based on the unique values\nin each feature. Alternatively, you can also specify the `categories`\nmanually.\n\nThis encoding is needed for feeding categorical data to many scikit-learn\nestimators, notably linear models and SVMs with the standard kernels.\n\nNote: a one-hot encoding of y labels should use a LabelBinarizer\ninstead.\n\nRead more in the :ref:`User Guide <preprocessing_categorical_features>`.\n",
+    "description": "\nEncode categorical features as a one-hot numeric array.\n\nThe input to this transformer should be an array-like of integers or\nstrings, denoting the values taken on by categorical (discrete) features.\nThe features are encoded using a one-hot (aka 'one-of-K' or 'dummy')\nencoding scheme. This creates a binary column for each category and\nreturns a sparse matrix or dense array (depending on the ``sparse_output``\nparameter).\n\nBy default, the encoder derives the categories based on the unique values\nin each feature. Alternatively, you can also specify the `categories`\nmanually.\n\nThis encoding is needed for feeding categorical data to many scikit-learn\nestimators, notably linear models and SVMs with the standard kernels.\n\nNote: a one-hot encoding of y labels should use a LabelBinarizer\ninstead.\n\nRead more in the :ref:`User Guide <preprocessing_categorical_features>`.\nFor a comparison of different encoders, refer to:\n:ref:`sphx_glr_auto_examples_preprocessing_plot_target_encoder.py`.\n",
     "attributes": [
       {
         "description": "Categories (unique values) per feature:\n\n- 'auto' : Determine categories automatically from the training data.\n- list : ``categories[i]`` holds the categories expected in the ith\ncolumn. The passed categories should not mix strings and numeric\nvalues within a single feature, and should be sorted in case of\nnumeric values.\n\nThe used categories can be found in the ``categories_`` attribute.\n\n.. versionadded:: 0.20\n",
@@ -1854,7 +1854,7 @@
         "type": "boolean"
       },
       {
-        "default": "float",
+        "default": "np.float64",
         "description": "Desired dtype of output.\n",
         "name": "dtype"
       },
@@ -1877,7 +1877,7 @@
       {
         "name": "sparse_output",
         "default": true,
-        "description": "Will return sparse matrix if set True else will return an array.\n\n.. versionadded:: 1.2\n`sparse` was renamed to `sparse_output`\n"
+        "description": "When ``True``, it returns a :class:`scipy.sparse.csr_matrix`,\ni.e. a sparse matrix in \"Compressed Sparse Row\" (CSR) format.\n\n.. versionadded:: 1.2\n`sparse` was renamed to `sparse_output`\n"
       },
       {
         "name": "feature_name_combiner",
@@ -2020,7 +2020,7 @@
   },
   {
     "name": "sklearn.svm.SVC",
-    "description": "C-Support Vector Classification.\n\nThe implementation is based on libsvm. The fit time scales at least\nquadratically with the number of samples and may be impractical\nbeyond tens of thousands of samples. For large datasets\nconsider using :class:`~sklearn.svm.LinearSVC` or\n:class:`~sklearn.linear_model.SGDClassifier` instead, possibly after a\n:class:`~sklearn.kernel_approximation.Nystroem` transformer or\nother :ref:`kernel_approximation`.\n\nThe multiclass support is handled according to a one-vs-one scheme.\n\nFor details on the precise mathematical formulation of the provided\nkernel functions and how `gamma`, `coef0` and `degree` affect each\nother, see the corresponding section in the narrative documentation:\n:ref:`svm_kernels`.\n\nRead more in the :ref:`User Guide <svm_classification>`.\n",
+    "description": "C-Support Vector Classification.\n\nThe implementation is based on libsvm. The fit time scales at least\nquadratically with the number of samples and may be impractical\nbeyond tens of thousands of samples. For large datasets\nconsider using :class:`~sklearn.svm.LinearSVC` or\n:class:`~sklearn.linear_model.SGDClassifier` instead, possibly after a\n:class:`~sklearn.kernel_approximation.Nystroem` transformer or\nother :ref:`kernel_approximation`.\n\nThe multiclass support is handled according to a one-vs-one scheme.\n\nFor details on the precise mathematical formulation of the provided\nkernel functions and how `gamma`, `coef0` and `degree` affect each\nother, see the corresponding section in the narrative documentation:\n:ref:`svm_kernels`.\n\nTo learn how to tune SVC's hyperparameters, see the following example:\n:ref:`sphx_glr_auto_examples_model_selection_plot_nested_cross_validation_iris.py`\n\nRead more in the :ref:`User Guide <svm_classification>`.\n",
     "attributes": [
       {
         "default": 1.0,
@@ -2031,7 +2031,7 @@
       },
       {
         "default": "rbf",
-        "description": "Specifies the kernel type to be used in the algorithm.\nIf none is given, 'rbf' will be used. If a callable is given it is\nused to pre-compute the kernel matrix from data matrices; that matrix\nshould be an array of shape ``(n_samples, n_samples)``.\n",
+        "description": "Specifies the kernel type to be used in the algorithm. If\nnone is given, 'rbf' will be used. If a callable is given it is used to\npre-compute the kernel matrix from data matrices; that matrix should be\nan array of shape ``(n_samples, n_samples)``. For an intuitive\nvisualization of different kernel types see\n:ref:`sphx_glr_auto_examples_svm_plot_svm_kernels.py`.\n",
         "name": "kernel",
         "optional": true,
         "type": "string"
@@ -2127,7 +2127,7 @@
   },
   {
     "name": "sklearn.svm.SVC",
-    "description": "C-Support Vector Classification.\n\nThe implementation is based on libsvm. The fit time scales at least\nquadratically with the number of samples and may be impractical\nbeyond tens of thousands of samples. For large datasets\nconsider using :class:`~sklearn.svm.LinearSVC` or\n:class:`~sklearn.linear_model.SGDClassifier` instead, possibly after a\n:class:`~sklearn.kernel_approximation.Nystroem` transformer or\nother :ref:`kernel_approximation`.\n\nThe multiclass support is handled according to a one-vs-one scheme.\n\nFor details on the precise mathematical formulation of the provided\nkernel functions and how `gamma`, `coef0` and `degree` affect each\nother, see the corresponding section in the narrative documentation:\n:ref:`svm_kernels`.\n\nRead more in the :ref:`User Guide <svm_classification>`.\n",
+    "description": "C-Support Vector Classification.\n\nThe implementation is based on libsvm. The fit time scales at least\nquadratically with the number of samples and may be impractical\nbeyond tens of thousands of samples. For large datasets\nconsider using :class:`~sklearn.svm.LinearSVC` or\n:class:`~sklearn.linear_model.SGDClassifier` instead, possibly after a\n:class:`~sklearn.kernel_approximation.Nystroem` transformer or\nother :ref:`kernel_approximation`.\n\nThe multiclass support is handled according to a one-vs-one scheme.\n\nFor details on the precise mathematical formulation of the provided\nkernel functions and how `gamma`, `coef0` and `degree` affect each\nother, see the corresponding section in the narrative documentation:\n:ref:`svm_kernels`.\n\nTo learn how to tune SVC's hyperparameters, see the following example:\n:ref:`sphx_glr_auto_examples_model_selection_plot_nested_cross_validation_iris.py`\n\nRead more in the :ref:`User Guide <svm_classification>`.\n",
     "attributes": [
       {
         "default": 1.0,
@@ -2138,7 +2138,7 @@
       },
       {
         "default": "rbf",
-        "description": "Specifies the kernel type to be used in the algorithm.\nIf none is given, 'rbf' will be used. If a callable is given it is\nused to pre-compute the kernel matrix from data matrices; that matrix\nshould be an array of shape ``(n_samples, n_samples)``.\n",
+        "description": "Specifies the kernel type to be used in the algorithm. If\nnone is given, 'rbf' will be used. If a callable is given it is used to\npre-compute the kernel matrix from data matrices; that matrix should be\nan array of shape ``(n_samples, n_samples)``. For an intuitive\nvisualization of different kernel types see\n:ref:`sphx_glr_auto_examples_svm_plot_svm_kernels.py`.\n",
         "name": "kernel",
         "optional": true,
         "type": "string"

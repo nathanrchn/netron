@@ -1,32 +1,37 @@
 
-var host = {};
+import * as electron from 'electron';
+import * as fs from 'fs';
+import * as http from 'http';
+import * as https from 'https';
+import * as path from 'path';
+import * as url from 'url';
+import * as base from './base.js';
+import * as view from './view.js';
 
-const electron = require('electron');
-const fs = require('fs');
-const http = require('http');
-const https = require('https');
-const process = require('process');
-const path = require('path');
-const base = require('./base');
+const host = {};
 
 host.ElectronHost = class {
 
     constructor() {
         this._document = window.document;
         this._window = window;
+        this._global = global;
         this._telemetry = new base.Telemetry(this._window);
         process.on('uncaughtException', (err) => {
             this.exception(err, true);
             this._terminate(err.message);
         });
-        this._window.eval = global.eval = () => {
+        this._global.eval = () => {
+            throw new Error('eval.eval() not supported.');
+        };
+        this._window.eval = () => {
             throw new Error('window.eval() not supported.');
         };
         this._window.addEventListener('unload', () => {
             if (typeof __coverage__ !== 'undefined') {
-                const file = path.join('.nyc_output', path.basename(window.location.pathname, '.html')) + '.json';
+                const file = path.join('.nyc_output', path.basename(window.location.pathname, '.html'));
                 /* eslint-disable no-undef */
-                fs.writeFileSync(file, JSON.stringify(__coverage__));
+                fs.writeFileSync(`${file}.json`, JSON.stringify(__coverage__));
                 /* eslint-enable no-undef */
             }
         });
@@ -73,7 +78,7 @@ host.ElectronHost = class {
             return Promise.resolve();
         };
         const consent = async () => {
-            const time = this.get('configuration', 'consent');
+            const time = this.get('consent');
             if (!time || (Date.now() - time) > 30 * 24 * 60 * 60 * 1000) {
                 let consent = true;
                 try {
@@ -83,21 +88,21 @@ host.ElectronHost = class {
                     if (json && json.country && countries.indexOf(json.country) === -1) {
                         consent = false;
                     }
-                } catch (error) {
+                } catch {
                     // continue regardless of error
                 }
                 if (consent) {
-                    await this._message('This app uses cookies to report errors and anonymous usage information.', 'Accept');
+                    await this.message('This app uses cookies to report errors and anonymous usage information.', 'Accept');
                 }
-                this.set('configuration', 'consent', Date.now());
+                this.set('consent', Date.now());
             }
         };
         const telemetry = async () => {
             if (this._environment.packaged) {
                 const measurement_id = '848W2NVWVH';
-                const user = this.get('configuration', 'user') || null;
-                const session = this.get('configuration', 'session') || null;
-                await this._telemetry.start('G-' + measurement_id, user && user.indexOf('.') !== -1 ? user : null, session);
+                const user = this.get('user') || null;
+                const session = this.get('session') || null;
+                await this._telemetry.start(`G-${measurement_id}`, user && user.indexOf('.') !== -1 ? user : null, session);
                 this._telemetry.send('page_view', {
                     app_name: this.type,
                     app_version: this.version,
@@ -107,9 +112,8 @@ host.ElectronHost = class {
                     app_name: this.type,
                     app_version: this.version
                 });
-                this.set('configuration', 'user', this._telemetry.get('client_id'));
-                this.set('configuration', 'session', this._telemetry.session);
-                this._telemetry_ua = new host.Telemetry('UA-54146-13', this._telemetry.get('client_id'), navigator.userAgent, this.type, this.version);
+                this.set('user', this._telemetry.get('client_id'));
+                this.set('session', this._telemetry.session);
             }
         };
         await age();
@@ -155,7 +159,7 @@ host.ElectronHost = class {
         });
         electron.ipcRenderer.on('toggle', (sender, name) => {
             this._view.toggle(name);
-            this._update(Object.assign({}, this._view.options));
+            this._update({ ...this._view.options });
         });
         electron.ipcRenderer.on('zoom-in', () => {
             this._element('zoom-in-button').click();
@@ -219,7 +223,7 @@ host.ElectronHost = class {
             e.preventDefault();
             const paths = Array.from(e.dataTransfer.files).map(((file) => file.path));
             if (paths.length > 0) {
-                electron.ipcRenderer.send('drop-paths', { paths: paths });
+                electron.ipcRenderer.send('drop-paths', { paths });
             }
             return false;
         });
@@ -230,39 +234,31 @@ host.ElectronHost = class {
         return this._environment[name];
     }
 
-    async error(message, detail) {
+    async error(message, detail, cancel) {
         const options = {
             type: 'error',
-            message: message,
-            detail: detail,
-            buttons: [ 'Report', 'Cancel' ]
+            message,
+            detail,
+            buttons: cancel ? ['Report', 'Cancel'] : ['Report']
         };
         return electron.ipcRenderer.sendSync('show-message-box', options);
-        // return await this._message(message + ': ' + detail, 'Report');
-    }
-
-    confirm(message, detail) {
-        const result = electron.ipcRenderer.sendSync('show-message-box', {
-            type: 'question',
-            message: message,
-            detail: detail,
-            buttons: ['Yes', 'No'],
-            defaultId: 0,
-            cancelId: 1
-        });
-        return result === 0;
+        // return await this.message(message + ': ' + detail, 'Report');
     }
 
     async require(id) {
-        return require(id);
+        return import(`${id}.js`);
+    }
+
+    worker(id) {
+        return new this.window.Worker(`${id}.js`, { type: 'module' });
     }
 
     save(name, extension, defaultPath, callback) {
         const selectedFile = electron.ipcRenderer.sendSync('show-save-dialog', {
             title: 'Export Tensor',
-            defaultPath: defaultPath,
+            defaultPath,
             buttonLabel: 'Export',
-            filters: [ { name: name, extensions: [ extension ] } ]
+            filters: [{ name, extensions: [extension] }]
         });
         if (selectedFile) {
             callback(selectedFile);
@@ -283,9 +279,9 @@ host.ElectronHost = class {
 
         let err = null;
         if (!blob) {
-            err = new Error("Export blob is '" + JSON.stringify(blob) + "'.");
+            err = new Error(`Export blob is '${JSON.stringify(blob)}'.`);
         } else if (!(blob instanceof Blob)) {
-            err = new Error("Export blob type is '" + (typeof blob) + "'.");
+            err = new Error(`Export blob type is '${typeof blob}'.`);
         }
 
         if (err) {
@@ -297,19 +293,20 @@ host.ElectronHost = class {
     }
 
     execute(name, value) {
-        electron.ipcRenderer.send('execute', { name: name, value: value });
+        electron.ipcRenderer.send('execute', { name, value });
     }
 
     async request(file, encoding, basename) {
         return new Promise((resolve, reject) => {
-            const pathname = path.join(basename || __dirname, file);
+            const dirname = path.dirname(url.fileURLToPath(import.meta.url));
+            const pathname = path.join(basename || dirname, file);
             fs.stat(pathname, (err, stat) => {
                 if (err && err.code === 'ENOENT') {
-                    reject(new Error("The file '" + file + "' does not exist."));
+                    reject(new Error(`The file '${file}' does not exist.`));
                 } else if (err) {
                     reject(err);
                 } else if (!stat.isFile()) {
-                    reject(new Error("The path '" + file + "' is not a file."));
+                    reject(new Error(`The path '${file}' is not a file.`));
                 } else if (stat && stat.size < 0x7ffff000) {
                     fs.readFile(pathname, encoding, (err, data) => {
                         if (err) {
@@ -319,7 +316,7 @@ host.ElectronHost = class {
                         }
                     });
                 } else if (encoding) {
-                    reject(new Error("The file '" + file + "' size (" + stat.size.toString() + ") for encoding '" + encoding + "' is greater than 2 GB."));
+                    reject(new Error(`The file '${file}' size (${stat.size.toString()}) for encoding '${encoding}' is greater than 2 GB.`));
                 } else {
                     resolve(new host.ElectronHost.FileStream(pathname, 0, stat.size, stat.mtimeMs));
                 }
@@ -332,37 +329,33 @@ host.ElectronHost = class {
     }
 
     exception(error, fatal) {
-        if ((this._telemetry_ua || this._telemetry) && error) {
+        if (this._telemetry && error) {
             try {
-                const name = error.name ? error.name + ': ' : '';
+                const name = error.name ? `${error.name}: ` : '';
                 const message = error.message ? error.message : JSON.stringify(error);
-                const description = name + message;
                 let context = '';
                 let stack = '';
                 if (error.stack) {
                     const format = (file, line, column) => {
-                        return file.split('\\').join('/').split('/').pop() + ':' + line + ':' + column;
+                        return `${file.split('\\').join('/').split('/').pop()}:${line}:${column}`;
                     };
                     const match = error.stack.match(/\n {4}at (.*) \((.*):(\d*):(\d*)\)/);
                     if (match) {
-                        stack = match[1] + ' (' + format(match[2], match[3], match[4]) + ')';
+                        stack = `${match[1]} (${format(match[2], match[3], match[4])})`;
                     } else {
                         const match = error.stack.match(/\n {4}at (.*):(\d*):(\d*)/);
                         if (match) {
-                            stack = '(' + format(match[1], match[2], match[3]) + ')';
+                            stack = `(${format(match[1], match[2], match[3])})`;
                         } else {
                             const match = error.stack.match(/.*\n\s*(.*)\s*/);
                             if (match) {
-                                stack = match[1];
+                                [, stack] = match;
                             }
                         }
                     }
                 }
                 if (error.context) {
                     context = typeof error.context === 'string' ? error.context : JSON.stringify(error.context);
-                }
-                if (this._telemetry_ua) {
-                    this._telemetry_ua.exception(stack ? description + ' @ ' + stack : description, fatal);
                 }
                 this._telemetry.send('exception', {
                     app_name: this.type,
@@ -373,17 +366,7 @@ host.ElectronHost = class {
                     error_stack: stack,
                     error_fatal: fatal ? true : false
                 });
-            } catch (e) {
-                // continue regardless of error
-            }
-        }
-    }
-
-    event_ua(category, action, label, value) {
-        if (this._telemetry_ua && category && action && label) {
-            try {
-                this._telemetry_ua.event(category, action, label, value);
-            } catch (e) {
+            } catch {
                 // continue regardless of error
             }
         }
@@ -422,7 +405,7 @@ host.ElectronHost = class {
             walk(location);
             return new host.ElectronHost.Context(this, location, basename, null, entries);
         }
-        throw new Error("Unsupported path stat '" + JSON.stringify(stat) + "'.");
+        throw new Error(`Unsupported path stat '${JSON.stringify(stat)}'.`);
     }
 
     async _open(location) {
@@ -447,17 +430,19 @@ host.ElectronHost = class {
             try {
                 const model = await this._view.open(context);
                 this._view.show(null);
-                const options = Object.assign({}, this._view.options);
+                const options = { ...this._view.options };
                 if (model) {
                     options.path = path;
                     this._title(location.label);
+                } else {
+                    options.path = path;
+                    this._title('');
                 }
                 this._update(options);
             } catch (error) {
-                const options = Object.assign({}, this._view.options);
+                const options = { ...this._view.options };
                 if (error) {
                     await this._view.error(error, null, null);
-                    options.path = null;
                 }
                 this._update(options);
             }
@@ -474,13 +459,7 @@ host.ElectronHost = class {
                 options.timeout = timeout;
             }
             const request = protocol.request(location, options, (response) => {
-                if (response.statusCode !== 200) {
-                    const err = new Error("The web request failed with status code " + response.statusCode + " at '" + location + "'.");
-                    err.type = 'error';
-                    err.url = location;
-                    err.status = response.statusCode;
-                    reject(err);
-                } else {
+                if (response.statusCode === 200) {
                     let data = '';
                     response.on('data', (chunk) => {
                         data += chunk;
@@ -491,6 +470,12 @@ host.ElectronHost = class {
                     response.on('end', () => {
                         resolve(data);
                     });
+                } else {
+                    const err = new Error(`The web request failed with status code ${response.statusCode} at '${location}'.`);
+                    err.type = 'error';
+                    err.url = location;
+                    err.status = response.statusCode;
+                    reject(err);
                 }
             });
             request.on("error", (err) => {
@@ -498,7 +483,7 @@ host.ElectronHost = class {
             });
             request.on("timeout", () => {
                 request.destroy();
-                const error = new Error("The web request timed out at '" + location + "'.");
+                const error = new Error(`The web request timed out at '${location}'.`);
                 error.type = 'timeout';
                 error.url = url;
                 reject(error);
@@ -507,27 +492,27 @@ host.ElectronHost = class {
         });
     }
 
-    get(context, name) {
+    get(name) {
         try {
-            return electron.ipcRenderer.sendSync('get-' + context, { name: name });
-        } catch (error) {
+            return electron.ipcRenderer.sendSync('get-configuration', { name });
+        } catch {
             // continue regardless of error
         }
         return undefined;
     }
 
-    set(context, name, value) {
+    set(name, value) {
         try {
-            electron.ipcRenderer.sendSync('set-' + context, { name: name, value: value });
-        } catch (error) {
+            electron.ipcRenderer.sendSync('set-configuration', { name, value });
+        } catch {
             // continue regardless of error
         }
     }
 
-    delete(context, name) {
+    delete(name) {
         try {
-            electron.ipcRenderer.sendSync('delete-' + context, { name: name });
-        } catch (error) {
+            electron.ipcRenderer.sendSync('delete-configuration', { name });
+        } catch {
             // continue regardless of error
         }
     }
@@ -540,7 +525,7 @@ host.ElectronHost = class {
                 const path = label.split(this._environment.separator || '/');
                 for (let i = 0; i < path.length; i++) {
                     const span = this.document.createElement('span');
-                    span.innerHTML = ' ' + path[i] + ' ' + (i !== path.length - 1 ? '<svg class="titlebar-icon" aria-hidden="true"><use xlink:href="#icon-arrow-right"></use></svg>' : '');
+                    span.innerHTML = ` ${path[i]} ${i === path.length - 1 ? '' : '<svg class="titlebar-icon" aria-hidden="true"><use xlink:href="#icon-arrow-right"></use></svg>'}`;
                     element.appendChild(span);
                 }
             }
@@ -570,14 +555,14 @@ host.ElectronHost = class {
         if (this._view) {
             try {
                 this._view.show('welcome message');
-            } catch (error) {
+            } catch {
                 // continue regardless of error
             }
         }
         this._document.body.setAttribute('class', 'welcome message');
     }
 
-    _message(message, action) {
+    message(message, action) {
         return new Promise((resolve) => {
             this._element('message-text').innerText = message;
             const button = this._element('message-button');
@@ -594,66 +579,12 @@ host.ElectronHost = class {
                 button.style.display = 'none';
                 button.onclick = null;
             }
-            this._document.body.classList.add('message');
-        });
-    }
-};
-
-host.Telemetry = class {
-
-    constructor(trackingId, clientId, userAgent, applicationName, applicationVersion) {
-        this._params = {
-            aip: '1', // anonymizeIp
-            tid: trackingId,
-            cid: clientId,
-            ua: userAgent,
-            an: applicationName,
-            av: applicationVersion
-        };
-    }
-
-    event(category, action, label, value) {
-        const params = Object.assign({}, this._params);
-        params.ec = category;
-        params.ea = action;
-        params.el = label;
-        params.ev = value;
-        this._send('event', params);
-    }
-
-    exception(description, fatal) {
-        const params = Object.assign({}, this._params);
-        params.exd = description;
-        if (fatal) {
-            params.exf = '1';
-        }
-        this._send('exception', params);
-    }
-
-    _send(type, params) {
-        params.t = type;
-        params.v = '1';
-        for (const param in params) {
-            if (params[param] === null || params[param] === undefined) {
-                delete params[param];
+            if (message || action) {
+                this._document.body.classList.add('message');
+            } else {
+                this._document.body.classList.remove('message');
             }
-        }
-        const body = Object.entries(params).map((entry) => encodeURIComponent(entry[0]) + '=' + encodeURIComponent(entry[1])).join('&');
-        const options = {
-            method: 'POST',
-            host: 'www.google-analytics.com',
-            path: '/collect',
-            headers: { 'Content-Length': Buffer.byteLength(body) }
-        };
-        const request = https.request(options, (response) => {
-            response.on('error', (/* error */) => {});
         });
-        request.setTimeout(5000, () => {
-            request.destroy();
-        });
-        request.on('error', (/* error */) => {});
-        request.write(body);
-        request.end();
     }
 };
 
@@ -688,12 +619,13 @@ host.ElectronHost.FileStream = class {
     skip(offset) {
         this._position += offset;
         if (this._position > this._length) {
-            throw new Error('Expected ' + (this._position - this._length) + ' more bytes. The file might be corrupted. Unexpected end of file.');
+            const offset = this._position - this._length;
+            throw new Error(`Expected ${offset} more bytes. The file might be corrupted. Unexpected end of file.`);
         }
     }
 
     peek(length) {
-        length = length !== undefined ? length : this._length - this._position;
+        length = length === undefined ? this._length - this._position : length;
         if (length < 0x1000000) {
             const position = this._fill(length);
             this._position -= length;
@@ -708,7 +640,7 @@ host.ElectronHost.FileStream = class {
     }
 
     read(length) {
-        length = length !== undefined ? length : this._length - this._position;
+        length = length === undefined ? this._length - this._position : length;
         if (length < 0x10000000) {
             const position = this._fill(length);
             return this._buffer.slice(position, position + length);
@@ -720,14 +652,10 @@ host.ElectronHost.FileStream = class {
         return buffer;
     }
 
-    byte() {
-        const position = this._fill(1);
-        return this._buffer[position];
-    }
-
     _fill(length) {
         if (this._position + length > this._length) {
-            throw new Error('Expected ' + (this._position + length - this._length) + ' more bytes. The file might be corrupted. Unexpected end of file.');
+            const offset = this._position + length - this._length;
+            throw new Error(`Expected ${offset} more bytes. The file might be corrupted. Unexpected end of file.`);
         }
         if (!this._buffer || this._position < this._offset || this._position + length > this._offset + this._buffer.length) {
             this._offset = this._position;
@@ -745,8 +673,8 @@ host.ElectronHost.FileStream = class {
     _read(buffer, offset) {
         const descriptor = fs.openSync(this._file, 'r');
         const stat = fs.statSync(this._file);
-        if (stat.mtimeMs != this._mtime) {
-            throw new Error("File '" + this._file + "' last modified time changed.");
+        if (stat.mtimeMs !== this._mtime) {
+            throw new Error(`File '${this._file}' last modified time changed.`);
         }
         try {
             fs.readSync(descriptor, buffer, 0, buffer.length, offset + this._start);
@@ -778,12 +706,12 @@ host.ElectronHost.Context = class {
         return this._entries;
     }
 
-    request(file, encoding, base) {
-        return this._host.request(file, encoding, base === undefined ? this._folder : base);
+    async request(file, encoding, base) {
+        return await this._host.request(file, encoding, base === undefined ? this._folder : base);
     }
 
-    require(id) {
-        return this._host.require(id);
+    async require(id) {
+        return await this._host.require(id);
     }
 
     exception(error, fatal) {
@@ -792,10 +720,7 @@ host.ElectronHost.Context = class {
 };
 
 window.addEventListener('load', () => {
-    global.protobuf = require('./protobuf');
-    global.flatbuffers = require('./flatbuffers');
     const value = new host.ElectronHost();
-    const view = require('./view');
     window.__view__ = new view.View(value);
     window.__view__.start();
 });

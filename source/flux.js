@@ -1,8 +1,7 @@
 
 // Experimental
 
-var flux = {};
-var json = require('./json');
+const flux = {};
 
 flux.ModelFactory = class {
 
@@ -11,31 +10,28 @@ flux.ModelFactory = class {
         const extension = identifier.split('.').pop().toLowerCase();
         const stream = context.stream;
         if (stream && extension === 'bson') {
-            return 'flux.bson';
+            context.type = 'flux.bson';
         }
-        return null;
     }
 
     async open(context) {
         let root = null;
         try {
-            const stream = context.stream;
-            const reader = json.BinaryReader.open(stream);
-            root = reader.read();
+            root = context.read('bson');
         } catch (error) {
             const message = error && error.message ? error.message : error.toString();
-            throw new flux.Error('File format is not Flux BSON (' + message.replace(/\.$/, '') + ').');
+            throw new flux.Error(`File format is not Flux BSON (${message.replace(/\.$/, '')}).`);
         }
-        const metadata = context.metadata('flux-metadata.json');
+        /* const metadata = */ context.metadata('flux-metadata.json');
         const backref = (obj, root) => {
             if (Array.isArray(obj)) {
                 for (let i = 0; i < obj.length; i++) {
                     obj[i] = backref(obj[i], root);
                 }
             } else if (obj === Object(obj)) {
-                if (obj.tag == 'backref' && obj.ref) {
+                if (obj.tag === 'backref' && obj.ref) {
                     if (!root._backrefs[obj.ref - 1]) {
-                        throw new flux.Error("Invalid backref '" + obj.ref + "'.");
+                        throw new flux.Error(`Invalid backref '${obj.ref}'.`);
                     }
                     obj = root._backrefs[obj.ref - 1];
                 }
@@ -52,7 +48,7 @@ flux.ModelFactory = class {
         if (!model) {
             throw new flux.Error('File does not contain Flux model.');
         }
-        return new flux.Model(metadata, model);
+        throw new flux.Error("File contains unsupported Flux data.");
     }
 };
 
@@ -80,6 +76,4 @@ flux.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = flux.ModelFactory;
-}
+export const ModelFactory = flux.ModelFactory;

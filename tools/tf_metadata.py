@@ -6,6 +6,7 @@ import os
 import google.protobuf # pylint: disable=import-error
 
 logging.getLogger('tensorflow').setLevel(logging.ERROR)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 from tensorflow.core.framework import api_def_pb2 # pylint: disable=import-error,no-name-in-module,wrong-import-position
 from tensorflow.core.framework import op_def_pb2 # pylint: disable=import-error,no-name-in-module,wrong-import-position
@@ -341,7 +342,7 @@ categories = {
     'Const': 'Constant',
     'Conv2D': 'Layer',
     'DepthwiseConv2dNative': 'Layer',
-    'Dequantize': 'Tensor',
+    'Dequantize': 'Quantization',
     'Elu': 'Activation',
     'FusedBatchNorm': 'Normalization',
     'FusedBatchNormV2': 'Normalization',
@@ -355,6 +356,13 @@ categories = {
     'MaxPoolV2': 'Pool',
     'MaxPoolWithArgmax': 'Pool',
     'Pad': 'Tensor',
+    'QuantizeAndDequantize': 'Quantization',
+    'QuantizeAndDequantizeV2': 'Quantization',
+    'QuantizeAndDequantizeV3': 'Quantization',
+    'QuantizeAndDequantizeV4': 'Quantization',
+    'QuantizeAndDequantizeV4Grad': 'Quantization',
+    'QuantizeDownAndShrinkRange': 'Quantization',
+    'QuantizeV2': 'Quantization',
     'Relu': 'Activation',
     'Relu6': 'Activation',
     'Reshape': 'Shape',

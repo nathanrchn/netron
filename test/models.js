@@ -1,21 +1,11 @@
 
-const fs = require('fs').promises;
-const path = require('path');
-const process = require('process');
-
-const base = require('../source/base');
-const view = require('../source/view');
-const zip = require('../source/zip');
-const tar = require('../source/tar');
-
-const access = async (path) => {
-    try {
-        await fs.access(path);
-        return true;
-    } catch (error) {
-        return false;
-    }
-};
+import * as fs from 'fs/promises';
+import * as inspector from 'inspector';
+import * as os from 'os';
+import * as path from 'path';
+import * as process from 'process';
+import * as url from 'url';
+import * as worker_threads from 'worker_threads';
 
 const clearLine = () => {
     if (process.stdout.clearLine) {
@@ -29,318 +19,153 @@ const write = (message) => {
     }
 };
 
-const decompress = (buffer) => {
-    let archive = zip.Archive.open(buffer, 'gzip');
-    if (archive && archive.entries.size == 1) {
-        const stream = archive.entries.values().next().value;
-        buffer = stream.peek();
-    }
-    const formats = [ zip, tar ];
-    for (const module of formats) {
-        archive = module.Archive.open(buffer);
-        if (archive) {
-            break;
-        }
-    }
-    return archive;
-};
-
-const host = {};
-
-host.TestHost = class {
-
-    constructor() {
-        this._window = global.window;
-        this._document = this._window.document;
-        this._sourceDir = path.join(__dirname, '..', 'source');
-    }
-
-    get window() {
-        return this._window;
-    }
-
-    get document() {
-        return this._document;
-    }
-
-    async view(/* view */) {
-    }
-
-    async start() {
-    }
-
-    environment(name) {
-        if (name == 'zoom') {
-            return 'none';
-        }
-        return null;
-    }
-
-    screen(/* name */) {
-    }
-
-    async require(id) {
-        const file = path.join(this._sourceDir, id + '.js');
-        return require(file);
-    }
-
-    async request(file, encoding, basename) {
-        const pathname = path.join(basename || this._sourceDir, file);
-        const exists = await access(pathname);
-        if (!exists) {
-            throw new Error("The file '" + file + "' does not exist.");
-        }
-        if (encoding) {
-            const buffer = await fs.readFile(pathname, encoding);
-            return buffer;
-        }
-        const buffer = await fs.readFile(pathname, null);
-        return new base.BinaryStream(buffer);
-    }
-
-    event_ua(/* category, action, label, value */) {
-    }
-
-    event(/* name, params */) {
-    }
-
-    exception(err /*, fatal */) {
-        throw err;
+const access = async (path) => {
+    try {
+        await fs.access(path);
+        return true;
+    } catch {
+        return false;
     }
 };
 
-host.TestHost.Context = class {
-
-    constructor(host, folder, identifier, stream, entries) {
-        this._host = host;
-        this._folder = folder;
-        this._identifier = identifier;
-        this._stream = stream;
-        this._entries = entries;
+const exit = (error) => {
+    /* eslint-disable no-console */
+    console.error(`${error.name}: ${error.message}`);
+    if (error.cause) {
+        console.error(`  ${error.cause.name}: ${error.cause.message}`);
     }
-
-    get identifier() {
-        return this._identifier;
-    }
-
-    get stream() {
-        return this._stream;
-    }
-
-    get entries() {
-        return this._entries;
-    }
-
-    request(file, encoding, base) {
-        return this._host.request(file, encoding, base === undefined ? this._folder : base);
-    }
-
-    require(id) {
-        return this._host.require(id);
-    }
-
-    exception(error, fatal) {
-        this._host.exception(error, fatal);
-    }
+    /* eslint-enable no-console */
+    process.exit(1);
 };
 
-global.Document = class {
-
-    constructor() {
-        this._elements = {};
-        this.documentElement = new HTMLElement();
-        this.body = new HTMLElement();
-    }
-
-    createElement(/* name */) {
-        return new HTMLElement();
-    }
-
-    createElementNS(/* namespace, name */) {
-        return new HTMLElement();
-    }
-
-    createTextNode(/* text */) {
-        return new HTMLElement();
-    }
-
-    getElementById(id) {
-        let element = this._elements[id];
-        if (!element) {
-            element = new HTMLElement();
-            this._elements[id] = element;
-        }
-        return element;
-    }
-
-    addEventListener(/* event, callback */) {
-    }
-
-    removeEventListener(/* event, callback */) {
-    }
+const dirname = (...args) => {
+    const file = url.fileURLToPath(import.meta.url);
+    const dir = path.dirname(file);
+    return path.join(dir, ...args);
 };
 
-global.HTMLElement = class {
-
-    constructor() {
-        this._childNodes = [];
-        this._attributes = new Map();
-        this._style = new CSSStyleDeclaration();
-    }
-
-    get style() {
-        return this._style;
-
-    }
-
-    appendChild(node) {
-        this._childNodes.push(node);
-    }
-
-    setAttribute(name, value) {
-        this._attributes.set(name, value);
-    }
-
-    hasAttribute(name) {
-        return this._attributes.has(name);
-    }
-
-    getAttribute(name) {
-        return this._attributes.get(name);
-    }
-
-    getElementsByClassName(name) {
-        const elements = [];
-        for (const node of this._childNodes) {
-            if (node instanceof HTMLElement) {
-                elements.push(...node.getElementsByClassName(name));
-                if (node.hasAttribute('class') &&
-                    node.getAttribute('class').split(' ').find((text) => text === name)) {
-                    elements.push(node);
-                }
-            }
-        }
-        return elements;
-    }
-
-    addEventListener(/* event, callback */) {
-    }
-
-    removeEventListener(/* event, callback */) {
-    }
-
-    get classList() {
-        return new DOMTokenList();
-    }
-
-    getBBox() {
-        return { x: 0, y: 0, width: 10, height: 10 };
-    }
-
-    getBoundingClientRect() {
-        return { left: 0, top: 0, wigth: 0, height: 0 };
-    }
-
-    scrollTo() {
-    }
-
-    focus() {
-    }
+const configuration = async () => {
+    const file = dirname('models.json');
+    const content = await fs.readFile(file, 'utf-8');
+    return JSON.parse(content);
 };
 
-global.CSSStyleDeclaration = class {
+class Logger {
 
-    constructor() {
-        this._properties = new Map();
+    constructor(threads) {
+        this._threads = threads;
+        this._entries = new Map();
     }
 
-    setProperty(name, value) {
-        this._properties.set(name, value);
-    }
-};
-
-global.DOMTokenList = class {
-
-    add(/* token */) {
-    }
-};
-
-global.Window = class {
-
-    constructor() {
-        this._document = new Document();
-    }
-
-    get document() {
-        return this._document;
-    }
-
-    addEventListener(/* event, callback */) {
-    }
-
-    removeEventListener(/* event, callback */) {
-    }
-};
-
-const request = async (url, init) => {
-    const response = await fetch(url, init);
-    if (!response.ok) {
-        throw new Error(response.status.toString());
-    }
-    if (response.body) {
-        const reader = response.body.getReader();
-        const length = response.headers.has('Content-Length') ? Number(response.headers.get('Content-Length')) : -1;
-        let position = 0;
-        const stream = new ReadableStream({
-            start(controller) {
-                const read = async () => {
-                    try {
-                        const result = await reader.read();
-                        if (result.done) {
-                            clearLine();
-                            controller.close();
-                        } else {
-                            position += result.value.length;
-                            if (length >= 0) {
-                                const label = url.length > 70 ? url.substring(0, 66) + '...' : url;
-                                write('  (' + ('  ' + Math.floor(100 * (position / length))).slice(-3) + '%) ' + label + '\r');
-                            } else {
-                                write('  ' + position + ' bytes\r');
-                            }
-                            controller.enqueue(result.value);
-                            read();
-                        }
-                    } catch (error) {
-                        controller.error(error);
+    update(identifier, message) {
+        let value = null;
+        if (message) {
+            switch (message.name) {
+                case 'name':
+                    delete this._cache;
+                    clearLine();
+                    write(`${message.target}\n`);
+                    value = '';
+                    break;
+                case 'download':
+                    if (message.percent !== undefined) {
+                        value = `${(`  ${Math.floor(100 * message.percent)}`).slice(-3)}% `;
+                    } else if (Number.isInteger(message.position)) {
+                        value = ` ${message.position}${this._threads === 1 ? ' bytes' : ''} `;
+                    } else {
+                        value = '  \u2714  ';
                     }
-                };
-                read();
+                    break;
+                case 'decompress':
+                    value = this._threads === 1 ? 'decompress' : '  ^  ';
+                    break;
+                case 'write':
+                    value = this._threads === 1 ? 'write' : '  *  ';
+                    break;
+                default:
+                    throw new Error(`Unsupported status message '${message.name}'.`);
             }
-        });
-        return new Response(stream, {
-            status: response.status,
-            statusText: response.statusText,
-            headers: response.headers
-        });
+        }
+        if (!this._entries.has(identifier) || this._entries.get(identifier) !== value) {
+            this._entries.set(identifier, value);
+            this._flush();
+        }
     }
-    return response;
-};
+
+    delete(identifier) {
+        this._entries.delete(identifier);
+        this._flush();
+    }
+
+    flush() {
+        delete this._cache;
+        this._flush();
+    }
+
+    _flush() {
+        const values = Array.from(this._entries.values());
+        const text = values.some((s) => s) ? `  ${values.map((s) => s || '     ').join('-')}\r` : '';
+        if (this._cache !== text) {
+            this._cache = text;
+            clearLine();
+            write(text);
+        }
+    }
+}
+
+class Queue extends Array {
+
+    constructor(targets, patterns) {
+        for (const target of targets) {
+            target.targets = target.target.split(',');
+            target.name = target.type ? `${target.type}/${target.targets[0]}` : target.targets[0];
+            target.tags = target.tags ? target.tags.split(',') : [];
+        }
+        if (patterns.length > 0) {
+            const tags = new Set();
+            patterns = patterns.filter((pattern) => {
+                if (pattern.startsWith('tag:')) {
+                    tags.add(pattern.substring(4));
+                    return false;
+                }
+                return true;
+            });
+            patterns = patterns.map((pattern) => {
+                const wildcard = pattern.indexOf('*') !== -1;
+                return new RegExp(`^${wildcard ? `${pattern.replace(/\*/g, '.*')}$` : pattern}`);
+            });
+            targets = targets.filter((target) => {
+                for (const file of target.targets) {
+                    const value = target.type ? `${target.type}/${file}` : file;
+                    if (patterns.some((pattern) => pattern.test(value))) {
+                        return true;
+                    }
+                    if (target.tags.some((tag) => tags.has(tag))) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+        }
+        super(...targets.reverse());
+    }
+}
 
 class Table {
 
     constructor(schema) {
         this.schema = schema;
-        const line = Array.from(this.schema).join(',') + '\n';
-        this.content = [ line ];
+        const line = `${Array.from(this.schema).join(',')}\n`;
+        this.content = [line];
     }
 
     async add(row) {
         row = new Map(row);
-        const line = Array.from(this.schema).map((key) => {
+        const line = `${Array.from(this.schema).map((key) => {
             const value = row.has(key) ? row.get(key) : '';
             row.delete(key);
             return value;
-        }).join(',') + '\n';
+        }).join(',')}\n`;
         if (row.size > 0) {
             throw new Error();
         }
@@ -359,385 +184,107 @@ class Table {
     }
 }
 
-class Target {
+class Worker {
 
-    constructor(host, item) {
-        Object.assign(this, item);
-        this.host = host;
-        const target = item.target.split(',');
-        this.target = item.type ? target : target.map((target) => path.resolve(process.cwd(), target));
-        this.action = new Set((this.action || '').split(';'));
-        this.folder = item.type ? path.normalize(path.join(__dirname, '..', 'third_party' , 'test', item.type)) : '';
-        this.name = this.type ? this.type + '/' + this.target[0] : this.target[0];
-        this.measures = new Map([ [ 'name', this.name ] ]);
-        // TODO #1109 duplicate value name
-        this.skip1109 = [ 'coreml', 'openvino' ].includes(this.type);
+    constructor(identifier, queue, logger, measures) {
+        this._identifier = identifier;
+        this._queue = queue;
+        this._logger = logger;
+        this._measures = measures;
     }
 
-    match(patterns) {
-        if (patterns.length === 0) {
-            return true;
+    async start() {
+        this._events = {};
+        this._events.message = (message) => this._message(message);
+        this._events.error = (error) => this._error(error);
+        this._worker = new worker_threads.Worker('./test/worker.js');
+        for (let task = this._queue.pop(); task; task = this._queue.pop()) {
+            this._logger.update(this._identifier, null);
+            /* eslint-disable no-await-in-loop */
+            await new Promise((resolve) => {
+                this._resolve = resolve;
+                this._attach();
+                this._worker.postMessage(task);
+            });
+            /* eslint-enable no-await-in-loop */
         }
-        for (const pattern of patterns) {
-            for (const target of this.target) {
-                const name = this.type + '/' + target;
-                const match = pattern.indexOf('*') !== -1 ?
-                    new RegExp('^' + pattern.replace('*', '.*') + '$').test(name) :
-                    name.startsWith(pattern);
-                if (match) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        this._logger.delete(this._identifier);
+        await this._worker.terminate();
     }
 
-    async execute() {
-        const time = async (method) => {
-            const start = process.hrtime.bigint();
-            let err = null;
-            try {
-                await method.bind(this)();
-            } catch (error) {
-                err = error;
+    _attach() {
+        this._worker.on('message', this._events.message);
+        this._worker.on('error', this._events.error);
+    }
+
+    _detach() {
+        this._worker.off('message', this._events.message);
+        this._worker.off('error', this._events.error);
+    }
+
+    async _message(message) {
+        switch (message.type) {
+            case 'status': {
+                this._logger.update(this._identifier, message);
+                break;
             }
-            const duration = Number(process.hrtime.bigint() - start) / 1e9;
-            this.measures.set(method.name, duration);
-            if (err) {
-                throw err;
+            case 'error': {
+                write(`\n${message.target}\n`);
+                this._error(message.error);
+                break;
             }
-        };
-        write(this.name + '\n');
-        clearLine();
-        await time(this.download);
-        try {
-            await time(this.load);
-            await time(this.validate);
-            if (!this.action.has('skip-render')) {
-                await time(this.render);
+            case 'complete': {
+                await this._measures.add(message.measures);
+                this._detach();
+                this._resolve();
+                delete this._resolve;
+                break;
             }
-            if (this.error) {
-                throw new Error('Expected error.');
-            }
-        } catch (error) {
-            if (!this.error || error.message !== this.error) {
-                throw error;
+            default: {
+                throw new Error(`Unsupported message type '${message.type}'.`);
             }
         }
     }
 
-    async download(targets, sources) {
-        targets = targets || Array.from(this.target);
-        sources = sources || this.source;
-        const files = targets.map((file) => path.join(this.folder, file));
-        const exists = await Promise.all(files.map((file) => access(file)));
-        if (exists.every((value) => value)) {
-            return;
-        }
-        if (!sources) {
-            throw new Error('Download source not specified.');
-        }
-        let source = '';
-        let sourceFiles = [];
-        const match = sources.match(/^(.*?)\[(.*?)\](.*)$/);
-        if (match) {
-            source = match[1];
-            sourceFiles = match[2].split(',').map((file) => file.trim());
-            sources = match[3] && match[3].startsWith(',') ? match[3].substring(1).trim() : '';
-        } else {
-            const commaIndex = sources.indexOf(',');
-            if (commaIndex != -1) {
-                source = sources.substring(0, commaIndex);
-                sources = sources.substring(commaIndex + 1);
-            } else {
-                source = sources;
-                sources = '';
-            }
-        }
-        await Promise.all(targets.map((target) => {
-            const dir = path.dirname(this.folder + '/' + target);
-            return fs.mkdir(dir, { recursive: true });
-        }));
-        const response = await request(source);
-        const buffer = await response.arrayBuffer();
-        const data = new Uint8Array(buffer);
-        if (sourceFiles.length > 0) {
-            clearLine();
-            write('  decompress...\r');
-            const archive = decompress(data);
-            clearLine();
-            for (const name of sourceFiles) {
-                write('  write ' + name + '\r');
-                if (name !== '.') {
-                    const stream = archive.entries.get(name);
-                    if (!stream) {
-                        throw new Error("Entry not found '" + name + '. Archive contains entries: ' + JSON.stringify(Array.from(archive.entries.keys())) + " .");
-                    }
-                    const target = targets.shift();
-                    const buffer = stream.peek();
-                    const file = path.join(this.folder, target);
-                    /* eslint-disable no-await-in-loop */
-                    await fs.writeFile(file, buffer, null);
-                    /* eslint-enable no-await-in-loop */
-                } else {
-                    const target = targets.shift();
-                    const dir = path.join(this.folder, target);
-                    /* eslint-disable no-await-in-loop */
-                    await fs.mkdir(dir, { recursive: true });
-                    /* eslint-enable no-await-in-loop */
-                }
-                clearLine();
-            }
-        } else {
-            const target = targets.shift();
-            clearLine();
-            write('  write ' + target + '\r');
-            await fs.writeFile(this.folder + '/' + target, data, null);
-        }
-        clearLine();
-        if (targets.length > 0 && sources.length > 0) {
-            await this.download(targets, sources);
-        }
-    }
-
-    async load() {
-        const target = path.join(this.folder, this.target[0]);
-        const identifier = path.basename(target);
-        const stat = await fs.stat(target);
-        let context = null;
-        if (stat.isFile()) {
-            const buffer = await fs.readFile(target, null);
-            const reader = new base.BinaryStream(buffer);
-            const dirname = path.dirname(target);
-            context = new host.TestHost.Context(this.host, dirname, identifier, reader);
-        } else if (stat.isDirectory()) {
-            const entries = new Map();
-            const file = async (pathname) => {
-                const buffer = await fs.readFile(pathname, null);
-                const stream = new base.BinaryStream(buffer);
-                const name = pathname.split(path.sep).join(path.posix.sep);
-                entries.set(name, stream);
-            };
-            const walk = async (dir) => {
-                const stats = await fs.readdir(dir, { withFileTypes: true });
-                const promises = [];
-                for (const stat of stats) {
-                    const pathname = path.join(dir, stat.name);
-                    if (stat.isDirectory()) {
-                        promises.push(walk(pathname));
-                    } else if (stat.isFile()) {
-                        promises.push(file(pathname));
-                    }
-                }
-                await Promise.all(promises);
-            };
-            await walk(target);
-            context = new host.TestHost.Context(this.host, target, identifier, null, entries);
-        }
-        const modelFactoryService = new view.ModelFactoryService(this.host);
-        this.model = await modelFactoryService.open(context);
-    }
-
-    validate() {
-        if (!this.model.format || (this.format && this.format != this.model.format)) {
-            throw new Error("Invalid model format '" + this.model.format + "'.");
-        }
-        if (this.producer && this.model.producer != this.producer) {
-            throw new Error("Invalid producer '" + this.model.producer + "'.");
-        }
-        if (this.runtime && this.model.runtime != this.runtime) {
-            throw new Error("Invalid runtime '" + this.model.runtime + "'.");
-        }
-        if (this.assert) {
-            for (const assert of this.assert) {
-                const parts = assert.split('==').map((item) => item.trim());
-                const properties = parts[0].split('.');
-                const value = JSON.parse(parts[1].replace(/\s*'|'\s*/g, '"'));
-                let context = { model: this.model };
-                while (properties.length) {
-                    const property = properties.shift();
-                    if (context[property] !== undefined) {
-                        context = context[property];
-                        continue;
-                    }
-                    const match = /(.*)\[(.*)\]/.exec(property);
-                    if (match.length === 3 && context[match[1]] !== undefined) {
-                        const array = context[match[1]];
-                        const index = parseInt(match[2], 10);
-                        if (array[index] !== undefined) {
-                            context = array[index];
-                            continue;
-                        }
-                    }
-                    throw new Error("Invalid property path: '" + parts[0]);
-                }
-                if (context !== value) {
-                    throw new Error("Invalid '" + context.toString() + "' != '" + assert + "'.");
-                }
-            }
-        }
-        if (this.model.version || this.model.description || this.model.author || this.model.license) {
-            // continue
-        }
-        for (const graph of this.model.graphs) {
-            const values = new Map();
-            const validateValue = (value) => {
-                value.name.toString();
-                value.name.length;
-                value.description;
-                value.quantization;
-                if (value.type) {
-                    value.type.toString();
-                }
-                if (value.initializer) {
-                    value.initializer.type.toString();
-                    const tensor = new view.Tensor(value.initializer);
-                    if (tensor.encoding !== '<' && tensor.encoding !== '>' && tensor.encoding !== '|') {
-                        throw new Error("Tensor encoding '" + tensor.encoding + "' is not implemented.");
-                    }
-                    if (tensor.layout && (tensor.layout !== 'sparse' && tensor.layout !== 'sparse.coo')) {
-                        throw new Error("Tensor layout '" + tensor.layout + "' is not implemented.");
-                    }
-                    if (!tensor.empty) {
-                        if (tensor.type && tensor.type.dataType === '?') {
-                            throw new Error('Tensor data type is not defined.');
-                        } else if (tensor.type && !tensor.type.shape) {
-                            throw new Error('Tensor shape is not defined.');
-                        } else {
-                            tensor.toString();
-                            /*
-                            const python = require('../source/python');
-                            const tensor = argument.initializer;
-                            if (tensor.type && tensor.type.dataType !== '?') {
-                                let data_type = tensor.type.dataType;
-                                switch (data_type) {
-                                    case 'boolean': data_type = 'bool'; break;
-                                }
-                                const execution = new python.Execution();
-                                const bytes = execution.invoke('io.BytesIO', []);
-                                const dtype = execution.invoke('numpy.dtype', [ data_type ]);
-                                const array = execution.invoke('numpy.asarray', [ tensor.value, dtype ]);
-                                execution.invoke('numpy.save', [ bytes, array ]);
-                            }
-                            */
-                        }
-                    }
-                } else if (value.name.length === 0) {
-                    throw new Error('Empty value name.');
-                }
-                if (value.name.length > 0 && value.initializer === null) {
-                    if (!values.has(value.name)) {
-                        values.set(value.name, value);
-                    } else if (value !== values.get(value.name) && !this.skip1109) {
-                        throw new Error("Duplicate value '" + value.name + "'.");
-                    }
-                }
-            };
-            for (const input of graph.inputs) {
-                input.name.toString();
-                input.name.length;
-                for (const value of input.value) {
-                    validateValue(value);
-                }
-            }
-            for (const output of graph.outputs) {
-                output.name.toString();
-                output.name.length;
-                for (const value of output.value) {
-                    validateValue(value);
-                }
-            }
-            for (const node of graph.nodes) {
-                const type = node.type;
-                if (!type || typeof type.name != 'string') {
-                    throw new Error("Invalid node type '" + JSON.stringify(node.type) + "'.");
-                }
-                view.Documentation.format(type);
-                node.name.toString();
-                node.description;
-                node.attributes.slice();
-                for (const attribute of node.attributes) {
-                    attribute.name.toString();
-                    attribute.name.length;
-                    let value = new view.Formatter(attribute.value, attribute.type).toString();
-                    if (value && value.length > 1000) {
-                        value = value.substring(0, 1000) + '...';
-                    }
-                    /* value = */ value.split('<');
-                }
-                for (const input of node.inputs) {
-                    input.name.toString();
-                    input.name.length;
-                    for (const value of input.value) {
-                        validateValue(value);
-                    }
-                }
-                for (const output of node.outputs) {
-                    output.name.toString();
-                    output.name.length;
-                    for (const value of output.value) {
-                        validateValue(value);
-                    }
-                }
-                if (node.chain) {
-                    for (const chain of node.chain) {
-                        chain.name.toString();
-                        chain.name.length;
-                    }
-                }
-                // new dialog.NodeSidebar(host, node);
-            }
-        }
-    }
-
-    async render() {
-        const current = new view.View(this.host);
-        current.options.attributes = true;
-        current.options.initializers = true;
-        await current.renderGraph(this.model, this.model.graphs[0]);
+    _error(error) {
+        this._detach();
+        delete this._resolve;
+        exit(error);
     }
 }
 
 const main = async () => {
     try {
-        let patterns = process.argv.length > 2 ? process.argv.slice(2) : [];
-        const configuration = await fs.readFile(__dirname + '/models.json', 'utf-8');
-        let targets = JSON.parse(configuration).reverse();
-        if (patterns.length > 0) {
-            const exists = await Promise.all(patterns.map((pattern) => access(pattern)));
-            if (exists.every((value) => value)) {
-                targets = patterns.map((path) => {
-                    return { target: path };
-                });
-                patterns = [];
-            }
-        }
-        const __host__ = new host.TestHost();
-        const measures = new Table([ 'name', 'download', 'load', 'validate', 'render' ]);
-        // await measures.log(path.join(__dirname, '..', 'dist', 'test', 'measures.csv'));
-        while (targets.length > 0) {
-            const item = targets.pop();
-            const target = new Target(__host__, item);
-            if (target.match(patterns)) {
+        const args = process.argv.length > 2 ? process.argv.slice(2) : [];
+        const exists = await Promise.all(args.map((pattern) => access(pattern)));
+        const paths = exists.length > 0 && exists.every((value) => value);
+        const patterns = paths ? [] : args;
+        const targets = paths ? args.map((path) => ({ target: path })) : await configuration();
+        const queue = new Queue(targets, patterns);
+        const threads = inspector.url() ? 1 : undefined;
+        const logger = new Logger(threads);
+        const measures = new Table(['name', 'download', 'load', 'validate', 'render']);
+        // await measures.log(dirname('..', 'dist', 'test', 'measures.csv'));
+        if (threads === 1) {
+            const worker = await import('./worker.js');
+            for (let item = queue.pop(); item; item = queue.pop()) {
+                const target = new worker.Target(item);
+                target.on('status', (_, message) => logger.update('', message));
                 /* eslint-disable no-await-in-loop */
                 await target.execute();
                 await measures.add(target.measures);
                 /* eslint-enable no-await-in-loop */
             }
+        } else {
+            const threads = Math.min(10, Math.round(0.7 * os.cpus().length), queue.length);
+            const identifiers = [...new Array(threads).keys()].map((value) => value.toString());
+            const workers = identifiers.map((identifier) => new Worker(identifier, queue, logger, measures));
+            const promises = workers.map((worker) => worker.start());
+            await Promise.all(promises);
         }
     } catch (error) {
-        /* eslint-disable no-console */
-        console.error(error.name + ': ' + error.message);
-        if (error.cause) {
-            console.error('  ' + error.cause.name + ': ' + error.cause.message);
-        }
-        /* eslint-enable no-console */
+        exit(error);
     }
 };
-
-global.protobuf = require('../source/protobuf');
-global.flatbuffers = require('../source/flatbuffers');
-global.TextDecoder = TextDecoder;
-global.window = new Window();
 
 main();

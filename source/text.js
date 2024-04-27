@@ -1,5 +1,5 @@
 
-var text = {};
+const text = {};
 
 text.Decoder = class {
 
@@ -9,7 +9,7 @@ text.Decoder = class {
         }
         const assert = (encoding, condition) => {
             if (encoding && encoding !== condition) {
-                throw new text.Error("Invalid encoding '" + encoding + "'.");
+                throw new text.Error(`Invalid encoding '${encoding}'.`);
             }
         };
         const buffer = data instanceof Uint8Array ? data : data.peek();
@@ -43,10 +43,11 @@ text.Decoder = class {
         if (length >= 4 && buffer[0] === 0x84 && buffer[1] === 0x31 && buffer[2] === 0x95 && buffer[3] === 0x33) {
             throw new text.Error("Unsupported GB-18030 encoding.");
         }
-        if (length > 4 && (length % 2) == 0 && (buffer[0] === 0x00 || buffer[1] === 0x00 || buffer[2] === 0x00 || buffer[3] === 0x00)) {
+        if (length > 4 && (length % 2) === 0 && (buffer[0] === 0x00 || buffer[1] === 0x00 || buffer[2] === 0x00 || buffer[3] === 0x00)) {
             const lo = new Uint32Array(256);
             const hi = new Uint32Array(256);
-            for (let i = 0; i < length; i += 2) {
+            const size = Math.min(1024, length);
+            for (let i = 0; i < size; i += 2) {
                 lo[buffer[i]]++;
                 hi[buffer[i + 1]]++;
             }
@@ -339,7 +340,5 @@ text.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.Decoder = text.Decoder;
-    module.exports.Reader = text.Reader;
-}
+export const Decoder = text.Decoder;
+export const Reader = text.Reader;

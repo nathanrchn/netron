@@ -28,7 +28,7 @@
         },
         {
             "name": "Browser",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/package.py",
             "args": [ "build", "start" ],
@@ -51,12 +51,12 @@
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/test/models.js",
-            "args": [],
+            "args": [ "tag:validation" ],
             "console": "integratedTerminal",
         },
         {
             "name": "Test Backend",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/test/backend.py",
             "args": [],
@@ -71,7 +71,7 @@
         },
         {
             "name": "Tools Python",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "args": [],

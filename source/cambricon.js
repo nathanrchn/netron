@@ -1,5 +1,5 @@
 
-var cambricon = {};
+const cambricon = {};
 
 cambricon.ModelFactory = class {
 
@@ -9,13 +9,12 @@ cambricon.ModelFactory = class {
             const buffer = stream.peek(Math.min(20, stream.length));
             const text = Array.from(buffer).map((c) => String.fromCharCode(c)).join('');
             if (text.startsWith('\x7fMEF') || text.startsWith('cambricon_offline')) {
-                return 'cambricon';
+                context.type = 'cambricon';
             }
         }
-        return '';
     }
 
-    async open(/* context, match */) {
+    async open(/* context */) {
         throw new cambricon.Error("File contains undocumented Cambricon data.");
     }
 };
@@ -28,6 +27,5 @@ cambricon.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = cambricon.ModelFactory;
-}
+export const ModelFactory = cambricon.ModelFactory;
+

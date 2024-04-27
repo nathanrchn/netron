@@ -1,29 +1,31 @@
 
-const path = require('path');
-const flatc = require('./flatc');
-const fs = require('fs').promises;
+import * as path from 'path';
+import * as url from 'url';
+import * as fs from 'fs/promises';
+import * as flatc from './flatc.js';
 
 const main = async () => {
-    const schema = path.join(__dirname, '..', 'third_party', 'source', 'mindspore', 'mindspore', 'lite', 'schema', 'ops.fbs');
-    const file = path.join(__dirname, '..', 'source', 'mslite-metadata.json');
+    const dirname = path.dirname(url.fileURLToPath(import.meta.url));
+    const schema = path.join(dirname, '..', 'third_party', 'source', 'mindspore', 'mindspore', 'lite', 'schema', 'ops.fbs');
+    const file = path.join(dirname, '..', 'source', 'mslite-metadata.json');
     const input = await fs.readFile(file, 'utf-8');
     const json = JSON.parse(input);
     const operators = new Map();
     const attributes = new Map();
     for (const operator of json) {
         if (operators.has(operator.name)) {
-            throw new Error("Duplicate operator '" + operator.name + "'.");
+            throw new Error(`Duplicate operator '${operator.name}'.`);
         }
         operators.set(operator.name, operator);
         if (operator && operator.attributes) {
             for (const attribute of operator.attributes) {
-                const name = operator.name + ':' + attribute.name;
+                const name = `${operator.name}:${attribute.name}`;
                 attributes.set(name, attribute);
             }
         }
     }
     const root = new flatc.Root('mslite');
-    await root.load([], [ schema ]);
+    await root.load([], [schema]);
     const namespace = root.find('mindspore.schema', flatc.Namespace);
     const primitiveType = namespace.find('mindspore.schema.PrimitiveType', flatc.Type);
     for (const table of primitiveType.values.values()) {
@@ -47,7 +49,7 @@ const main = async () => {
                 operator.outputs = outputs;
             }
             for (const field of table.fields.values()) {
-                const attr_key = op_key + ':' + field.name;
+                const attr_key = `${op_key}:${field.name}`;
                 if (!attributes.has(attr_key)) {
                     const attribute = { name: field.name };
                     attributes.set(attr_key, attribute);
@@ -58,7 +60,7 @@ const main = async () => {
                 let defaultValue = field.defaultValue;
                 if (type instanceof flatc.Enum) {
                     if (!type.keys.has(defaultValue)) {
-                        throw new Error("Invalid '" + type.name + "' default value '" + defaultValue + "'.");
+                        throw new Error(`Invalid '${type.name}' default value '${defaultValue}'.`);
                     }
                     defaultValue = type.keys.get(defaultValue);
                 }

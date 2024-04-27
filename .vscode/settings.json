@@ -4,8 +4,17 @@
         "node_modules": true,
         "third_party": true
     },
-    "python.linting.enabled": true,
-    "python.linting.pylintEnabled": true,
-    "python.linting.pylintCategorySeverity.convention": "Warning",
-    "python.linting.pylintCategorySeverity.refactor": "Warning"
+    "search.exclude": {
+        "dist": true,
+        "node_modules": true,
+        "third_party": true
+    },
+    "pylint.severity": {
+        "convention": "Warning",
+        "refactor": "Warning"
+    },
+    "eslint.experimental.useFlatConfig": true,
+    "eslint.options": {
+        "overrideConfigFile": "publish/eslint.config.js"
+    }
 }

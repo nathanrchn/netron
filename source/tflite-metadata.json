@@ -141,7 +141,8 @@
       { "name": "stride_w", "type": "int32", "default": 0, "description": "stride of the filter window" },
       { "name": "stride_h", "type": "int32", "default": 0, "description": "stride of the filter window" },
       { "name": "dilation_w_factor", "type": "int32", "default": 1 },
-      { "name": "dilation_h_factor", "type": "int32", "default": 1 }
+      { "name": "dilation_h_factor", "type": "int32", "default": 1 },
+      { "name": "quantized_bias_type", "type": "TensorType", "default": "FLOAT32" }
     ],
     "inputs": [
       { "name": "input", "description": "4D tensor" },
@@ -197,6 +198,7 @@
   },
   {
     "name": "Dequantize",
+    "category": "Quantization",
     "inputs": [
       { "name": "input" }
     ],
@@ -278,7 +280,8 @@
       { "name": "fused_activation_function", "type": "ActivationFunctionType", "default": "NONE" },
       { "name": "weights_format", "type": "FullyConnectedOptionsWeightsFormat", "default": "DEFAULT" },
       { "name": "keep_num_dims", "type": "boolean", "default": false },
-      { "name": "asymmetric_quantize_inputs", "type": "boolean", "default": false }
+      { "name": "asymmetric_quantize_inputs", "type": "boolean", "default": false },
+      { "name": "quantized_bias_type", "type": "TensorType", "default": "FLOAT32" }
     ],
     "inputs": [
       { "name": "input", "type": "T" },
@@ -349,7 +352,15 @@
     ]
   },
   {
+    "name": "InstanceNorm",
+    "attributes": [
+      { "name": "epsilon", "type": "float32", "default": 0 },
+      { "name": "fused_activation_function", "type": "ActivationFunctionType", "default": "NONE" }
+    ]
+  },
+  {
     "name": "LeakyRelu",
+    "category": "Activation",
     "attributes": [
       { "name": "alpha", "type": "float32", "default": 0 }
     ]
@@ -565,6 +576,18 @@
     ]
   },
   {
+    "name": "Padv2",
+    "category": "Tensor",
+    "inputs": [
+      { "name": "input" },
+      { "name": "paddings" },
+      { "name": "constant_values" }
+    ],
+    "outputs": [
+      { "name": "output" }
+    ]
+  },
+  {
     "name": "Predict",
     "inputs": [
       { "name": "hashes" },
@@ -590,6 +613,7 @@
   },
   {
     "name": "Quantize",
+    "category": "Quantization",
     "inputs": [
       { "name": "input" }
     ],
@@ -635,6 +659,12 @@
     ],
     "outputs": [
       { "name": "output", "type": "T" }
+    ]
+  },
+  {
+    "name": "ReduceWindow",
+    "attributes": [
+      { "name": "reduce_function", "type": "ReduceWindowFunction", "default": "UNSUPPORTED" }
     ]
   },
   {
@@ -939,6 +969,12 @@
     ]
   },
   {
+    "name": "StablehloRngBitGenerator",
+    "attributes": [
+      { "name": "algorithm", "type": "RngAlgorithm", "default": "DEFAULT" }
+    ]
+  },
+  {
     "name": "StablehloScatter",
     "attributes": [
       { "name": "indices_are_sorted", "type": "boolean", "default": false },
@@ -1085,7 +1121,8 @@
       { "name": "padding", "type": "Padding", "default": "SAME" },
       { "name": "stride_w", "type": "int32", "default": 0 },
       { "name": "stride_h", "type": "int32", "default": 0 },
-      { "name": "fused_activation_function", "type": "ActivationFunctionType", "default": "NONE" }
+      { "name": "fused_activation_function", "type": "ActivationFunctionType", "default": "NONE" },
+      { "name": "quantized_bias_type", "type": "TensorType", "default": "FLOAT32" }
     ],
     "inputs": [
       { "name": "output_shape" },

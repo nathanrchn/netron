@@ -1,8 +1,8 @@
 
 // Experimental
 
-var weka = {};
-var java = {};
+const weka = {};
+const java = {};
 
 weka.ModelFactory = class {
 
@@ -10,25 +10,24 @@ weka.ModelFactory = class {
         try {
             const stream = context.stream;
             if (stream.length >= 5) {
-                const signature = [ 0xac, 0xed ];
-                if (stream.peek(2).every((value, index) => value === signature[index])) {
+                const buffer = stream.peek(2);
+                if (buffer[0] === 0xAC && buffer[1] === 0xED) {
                     const reader = new java.io.InputObjectStream(stream);
                     const obj = reader.read();
                     if (obj && obj.$class && obj.$class.name) {
-                        return 'weka';
+                        context.type = 'weka';
+                        context.target = obj;
                     }
                 }
             }
-        } catch (err) {
+        } catch {
             // continue regardless of error
         }
-        return undefined;
     }
 
     async open(context) {
-        const reader = new java.io.InputObjectStream(context.stream);
-        const obj = reader.read();
-        throw new weka.Error("Unsupported type '" + obj.$class.name + "'.");
+        const obj = context.target;
+        throw new weka.Error(`Unsupported type '${obj.$class.name}'.`);
     }
 };
 
@@ -50,7 +49,7 @@ java.io.InputObjectStream = class {
         if (stream.length < 5) {
             throw new java.io.Error('Invalid stream size');
         }
-        const signature = [ 0xac, 0xed ];
+        const signature = [0xac, 0xed];
         if (!stream.peek(2).every((value, index) => value === signature[index])) {
             throw new java.io.Error('Invalid stream signature');
         }
@@ -59,7 +58,7 @@ java.io.InputObjectStream = class {
         this._reader.skip(2);
         const version = this._reader.uint16();
         if (version !== 0x0005) {
-            throw new java.io.Error("Unsupported version '" + version + "'.");
+            throw new java.io.Error(`Unsupported version '${version}'.`);
         }
     }
 
@@ -81,7 +80,7 @@ java.io.InputObjectStream = class {
                 return this._newString(false);
             }
             default: {
-                throw new java.io.Error("Unsupported code '" + code + "'.");
+                throw new java.io.Error(`Unsupported code '${code}'.`);
             }
         }
     }
@@ -98,7 +97,7 @@ java.io.InputObjectStream = class {
                 this._reader.byte();
                 return null;
             default:
-                throw new java.io.Error("Unsupported code '" + code + "'.");
+                throw new java.io.Error(`Unsupported code '${code}'.`);
         }
     }
 
@@ -131,7 +130,7 @@ java.io.InputObjectStream = class {
             case 0x7D: // TC_PROXYCLASSDESC
                 return null;
             default:
-                throw new java.io.Error("Unsupported code '" + code + "'.");
+                throw new java.io.Error(`Unsupported code '${code}'.`);
         }
     }
 
@@ -146,8 +145,8 @@ java.io.InputObjectStream = class {
         }
         if (flags & 0x02) { // SC_SERIALIZABLE
             debugger;
-            var customObject = objects[classname];
-            var hasReadObjectMethod = customObject && customObject.readObject;
+            const customObject = objects[classname];
+            const hasReadObjectMethod = customObject && customObject.readObject;
             if (flags & 0x01) { // SC_WRITE_METHOD
                 if (!hasReadObjectMethod) {
                     throw new Error('Class "'+ classname + '" dose not implement readObject()');
@@ -206,7 +205,7 @@ java.io.InputObjectStream.BinaryReader = class {
     skip(offset) {
         this._position += offset;
         if (this._position > this._end) {
-            throw new java.io.Error('Expected ' + (this._position - this._end) + ' more bytes. The file might be corrupted. Unexpected end of file.');
+            throw new java.io.Error(`Expected ${this._position - this._end} more bytes. The file might be corrupted. Unexpected end of file.`);
         }
     }
 
@@ -231,11 +230,11 @@ java.io.InputObjectStream.BinaryReader = class {
     uint64() {
         const position = this._position;
         this.skip(8);
-        return this._view.getUint64(position, false);
+        return this._view.getBigUint64(position, false);
     }
 
     string(long) {
-        const size = long ? this.uint64().toNumber() : this.uint16();
+        const size = long ? Number(this.uint64()) : this.uint16();
         const position = this._position;
         this.skip(size);
         this._decoder = this._decoder || new TextDecoder('utf-8');
@@ -251,6 +250,4 @@ java.io.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = weka.ModelFactory;
-}
+export const ModelFactory = weka.ModelFactory;
