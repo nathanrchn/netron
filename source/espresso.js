@@ -1,6 +1,5 @@
-
 var espresso = {};
-var json = require('./json');
+import { TextReader } from './json.js';
 
 espresso.ModelFactory = class {
 
@@ -11,12 +10,12 @@ espresso.ModelFactory = class {
             return null;
         }
         if (name == 'espresso') {
-            const obj = context.open('json');
-            if (obj.layers) {
-                return "espresso.net";
+            const obj = context.peek('json');
+            if (obj && obj.layers) {
+                context.type = 'expesso.net';
             }
-            if (obj.layer_shapes) {
-                return "espresso.shape";
+            if (obj && obj.layer_shapes) {
+                context.type = 'espresso.shape';
             }
         }
         return null;
@@ -41,11 +40,10 @@ espresso.ModelFactory = class {
         // const ext = target.split('.').pop().toLowerCase();
         const shapePath = context.identifier.replace('.net', '.shape');
 
-
         const loadNet = async (context) => {
             try {
                 const stream = context.stream;
-                const reader = json.TextReader.open(stream);
+                const reader = TextReader.open(stream);
                 const obj = reader.read();
                 console.debug(obj);
                 return obj;
@@ -56,9 +54,11 @@ espresso.ModelFactory = class {
         };
         const loadShape = async (context, shapePath) => {
             try {
-                const stream = await context.request(shapePath, null);
-                const reader = json.TextReader.open(stream);
-                const obj = reader.read();
+                // const stream = await context.request(shapePath, null);
+                // const reader = TextReader.open(stream);
+                // const obj = reader.read();
+                const content = await context.fetch(shapePath);
+                const obj = content.read('json');
                 return obj;
             } catch (error) {
                 console.debug("no shapes found at " + shapePath + ". Returnng empty.");
@@ -669,67 +669,67 @@ espresso.TensorShape = class {
 
 espresso.Utility = class {
 
-    // static dataType(type) {
-    //     switch (type) {
-    //         case mnn.schema.DataType.DT_INVALID: return '?';
-    //         case mnn.schema.DataType.DT_FLOAT: return 'float32';
-    //         case mnn.schema.DataType.DT_DOUBLE: return 'float64';
-    //         case mnn.schema.DataType.DT_INT32: return 'int32';
-    //         case mnn.schema.DataType.DT_UINT8: return 'uint8';
-    //         case mnn.schema.DataType.DT_INT16: return 'int16';
-    //         case mnn.schema.DataType.DT_INT8: return 'int8';
-    //         case mnn.schema.DataType.DT_STRING: return 'string';
-    //         case mnn.schema.DataType.DT_COMPLEX64: return 'complex64';
-    //         case mnn.schema.DataType.DT_INT64: return 'int64';
-    //         case mnn.schema.DataType.DT_BOOL: return 'boolean';
-    //         case mnn.schema.DataType.DT_QINT8: return 'qint8';
-    //         case mnn.schema.DataType.DT_QUINT8: return 'quint8';
-    //         case mnn.schema.DataType.DT_QINT32: return 'qint32';
-    //         case mnn.schema.DataType.DT_BFLOAT16: return 'bfloat16';
-    //         case mnn.schema.DataType.DT_QINT16: return 'qint16';
-    //         case mnn.schema.DataType.DT_QUINT16: return 'quint16';
-    //         case mnn.schema.DataType.DT_UINT16: return 'uint16';
-    //         case mnn.schema.DataType.DT_COMPLEX128: return 'complex128';
-    //         case mnn.schema.DataType.DT_HALF: return 'float16';
-    //         case mnn.schema.DataType.DT_RESOURCE: return 'resource';
-    //         case mnn.schema.DataType.DT_VARIANT: return 'variant';
-    //         default: throw new mnn.Error("Unsupported data type '" + JSON.stringify(type) + "'.");
-    //     }
-    // }
+    static dataType(type) {
+        switch (type) {
+            case mnn.schema.DataType.DT_INVALID: return '?';
+            case mnn.schema.DataType.DT_FLOAT: return 'float32';
+            case mnn.schema.DataType.DT_DOUBLE: return 'float64';
+            case mnn.schema.DataType.DT_INT32: return 'int32';
+            case mnn.schema.DataType.DT_UINT8: return 'uint8';
+            case mnn.schema.DataType.DT_INT16: return 'int16';
+            case mnn.schema.DataType.DT_INT8: return 'int8';
+            case mnn.schema.DataType.DT_STRING: return 'string';
+            case mnn.schema.DataType.DT_COMPLEX64: return 'complex64';
+            case mnn.schema.DataType.DT_INT64: return 'int64';
+            case mnn.schema.DataType.DT_BOOL: return 'boolean';
+            case mnn.schema.DataType.DT_QINT8: return 'qint8';
+            case mnn.schema.DataType.DT_QUINT8: return 'quint8';
+            case mnn.schema.DataType.DT_QINT32: return 'qint32';
+            case mnn.schema.DataType.DT_BFLOAT16: return 'bfloat16';
+            case mnn.schema.DataType.DT_QINT16: return 'qint16';
+            case mnn.schema.DataType.DT_QUINT16: return 'quint16';
+            case mnn.schema.DataType.DT_UINT16: return 'uint16';
+            case mnn.schema.DataType.DT_COMPLEX128: return 'complex128';
+            case mnn.schema.DataType.DT_HALF: return 'float16';
+            case mnn.schema.DataType.DT_RESOURCE: return 'resource';
+            case mnn.schema.DataType.DT_VARIANT: return 'variant';
+            default: throw new mnn.Error("Unsupported data type '" + JSON.stringify(type) + "'.");
+        }
+    }
 
-    // static enum(name, value) {
-    //     const type = name && mnn.schema ? mnn.schema[name] : undefined;
-    //     if (type) {
-    //         mnn.Utility._enumKeyMap = mnn.Utility._enumKeyMap || new Map();
-    //         if (!mnn.Utility._enumKeyMap.has(name)) {
-    //             const map = new Map();
-    //             for (const key of Object.keys(type)) {
-    //                 map.set(type[key], key);
-    //             }
-    //             mnn.Utility._enumKeyMap.set(name, map);
-    //         }
-    //         const map = mnn.Utility._enumKeyMap.get(name);
-    //         if (map.has(value)) {
-    //             return map.get(value);
-    //         }
-    //     }
-    //     return value.toString();
-    // }
+    static enum(name, value) {
+        const type = name && mnn.schema ? mnn.schema[name] : undefined;
+        if (type) {
+            mnn.Utility._enumKeyMap = mnn.Utility._enumKeyMap || new Map();
+            if (!mnn.Utility._enumKeyMap.has(name)) {
+                const map = new Map();
+                for (const key of Object.keys(type)) {
+                    map.set(type[key], key);
+                }
+                mnn.Utility._enumKeyMap.set(name, map);
+            }
+            const map = mnn.Utility._enumKeyMap.get(name);
+            if (map.has(value)) {
+                return map.get(value);
+            }
+        }
+        return value.toString();
+    }
 
-    // static createTensor(param, category) {
-    //     const type = new mnn.TensorType(param.dataType, new mnn.TensorShape(param.dims), param.dataFormat);
-    //     let data = null;
-    //     switch (type.dataType) {
-    //         case 'uint8': data = param.uint8s; break;
-    //         case 'int8': data = param.int8s; break;
-    //         case 'int32': data = param.int32s; break;
-    //         case 'int64': data = param.int64s; break;
-    //         case 'float16': data = param.uint8s; break;
-    //         case 'float32': data = param.float32s; break;
-    //         default: throw new mnn.Error("Unsupported blob data type '" + JSON.stringify(type.dataType) + "'.");
-    //     }
-    //     return new mnn.Tensor(category, type, data);
-    // }
+    static createTensor(param, category) {
+        const type = new mnn.TensorType(param.dataType, new mnn.TensorShape(param.dims), param.dataFormat);
+        let data = null;
+        switch (type.dataType) {
+            case 'uint8': data = param.uint8s; break;
+            case 'int8': data = param.int8s; break;
+            case 'int32': data = param.int32s; break;
+            case 'int64': data = param.int64s; break;
+            case 'float16': data = param.uint8s; break;
+            case 'float32': data = param.float32s; break;
+            default: throw new mnn.Error("Unsupported blob data type '" + JSON.stringify(type.dataType) + "'.");
+        }
+        return new mnn.Tensor(category, type, data);
+    }
 };
 
 espresso.Error = class extends Error {
@@ -740,6 +740,9 @@ espresso.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = espresso.ModelFactory;
-}
+// if (typeof module !== 'undefined' && typeof module.exports === 'object') {
+//     process.stdout.write("exporting espresso\n");
+//     module.exports.ModelFactory = espresso.ModelFactory;
+// }
+
+export const ModelFactory = espresso.ModelFactory;

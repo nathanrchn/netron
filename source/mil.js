@@ -1,6 +1,6 @@
 
 var mil = {};
-var text = require('./text');
+import { Reader } from './text.js';
 // var example = require('./example');
 
 mil.ModelFactory = class {
@@ -18,7 +18,7 @@ mil.ModelFactory = class {
         let reader = null;
         try {
             const stream = context.stream;
-            reader = text.Reader.open(stream);
+            reader = Reader.open(stream);
         } catch (error) {
             const message = error && error.message ? error.message : error.toString();
             throw new mil.Error('File format is not espresso.net (' + message.replace(/\.$/, '') + ').');
