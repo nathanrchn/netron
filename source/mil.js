@@ -1,17 +1,16 @@
 
 var mil = {};
 import { Reader } from './text.js';
-// var example = require('./example');
 
 mil.ModelFactory = class {
 
     match(context) {
         const identifier = context.identifier;
         const extension = identifier.toLowerCase().split('.').pop();
-        if (extension != "mil") {
+        if (extension != 'mil') {
             return null;
         }
-        return "mil";
+        context.type = 'mil';
     }
 
     async open(context) {
@@ -359,6 +358,8 @@ mil.Error = class extends Error {
     }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports === 'object') {
-    module.exports.ModelFactory = mil.ModelFactory;
-}
+// if (typeof module !== 'undefined' && typeof module.exports === 'object') {
+//     module.exports.ModelFactory = mil.ModelFactory;
+// }
+
+export const ModelFactory = mil.ModelFactory;
