@@ -55,15 +55,15 @@ host.BrowserHost = class {
     async view(view) {
         this._view = view;
         const age = async () => {
-            const days = (new Date() - new Date(this._environment.date)) / (24 * 60 * 60 * 1000);
-            if (days > 180) {
-                this.document.body.classList.remove('spinner');
-                this.window.exports.terminate('Please update to the newest version.', 'Download', () => {
-                    const link = this._element('logo-github').href;
-                    this.openURL(link);
-                });
-                return new Promise(() => {});
-            }
+            // const days = (new Date() - new Date(this._environment.date)) / (24 * 60 * 60 * 1000);
+            // if (days > 180) {
+            //     this.document.body.classList.remove('spinner');
+            //     this.window.exports.terminate('Please update to the newest version.', 'Download', () => {
+            //         const link = this._element('logo-github').href;
+            //         this.openURL(link);
+            //     });
+            //     return new Promise(() => {});
+            // }
             return Promise.resolve();
         };
         const consent = async () => {
